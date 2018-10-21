@@ -1,0 +1,66 @@
+
+################kubectl create namespace (create namespace)
+#############
+Create a namespace named prod.
+[root@master ~]# kubectl create namespace prod
+namespace/prod created
+
+ create a namespace named dev.
+[root@master ~]# kubectl create namespace dev
+namespace/dev created
+
+
+Check the namespace created.
+[root@master ~]# kubectl get namespace
+NAME          STATUS    AGE
+default       Active    61d
+prod         Active    2m
+dev         Active    2m
+
+Start Pod with prod and dev respectively.
+[root@master ~]# kubectl run nginx --image=nginx --namespace=prod
+deployment "nginx" created
+
+[root@master ~]# kubectl run nginx --image=nginx --namespace=dev
+deployment "nginx" created
+
+Check the state of Pod. It is understood that Pod is operating with name 1, name 2 respectively.
+[root@master ~]# kubectl get pod --all-namespaces
+[root@master ~]# kubectl get pod --all-namespaces
+NAMESPACE     NAME                                        READY   STATUS    RESTARTS   AGE
+kube-system   coredns-576cbf47c7-2k5cx                    1/1     Running   0          44m
+kube-system   coredns-576cbf47c7-9ngf4                    1/1     Running   0          44m
+kube-system   etcd-master.rmohan.com                      1/1     Running   0          43m
+kube-system   kube-apiserver-master.rmohan.com            1/1     Running   0          43m
+kube-system   kube-controller-manager-master.rmohan.com   1/1     Running   0          43m
+kube-system   kube-proxy-smvvd                            1/1     Running   0          42m
+kube-system   kube-proxy-w72tt                            1/1     Running   0          42m
+kube-system   kube-proxy-xbknk                            1/1     Running   0          42m
+kube-system   kube-proxy-zwb98                            1/1     Running   0          44m
+kube-system   kube-scheduler-master.rmohan.com            1/1     Running   0          43m
+kube-system   kubernetes-dashboard-d8dcbdbd-cvgjf         1/1     Running   0          36m
+kube-system   weave-net-b89dl                             2/2     Running   1          42m
+kube-system   weave-net-bsls5                             2/2     Running   0          42m
+kube-system   weave-net-nphsf                             2/2     Running   0          42m
+kube-system   weave-net-rn66g                             2/2     Running   1          42m
+prod         nginx-dbddb74b8-x9k2l                       1/1     Running   0          38s
+dev         nginx-dbddb74b8-74jdw                       1/1     Running   0          8s
+[root@master ~]#
+
+
+Exit Pod.
+[root@master ~]# kubectl delete deployment nginx --namespace=prod
+deployment.extensions "nginx" deleted
+
+[root@master ~]# kubectl delete deployment nginx --namespace=dev
+deployment.extensions "nginx" deleted
+
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod --all-namespaces
+[root@master ~]#
+ 
+ 
+ 
+ 
+ 	

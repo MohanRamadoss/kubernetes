@@ -1,0 +1,486 @@
+﻿Volumes
+
+That’s great for a simple static web server, but what about persistent storage?
+
+The container file system only lives as long as the container does. So if your app’s state needs to survive relocation, reboots, and crashes, you’ll need to configure some persistent storage.
+
+In this example you can create a Redis Pod with a named volume, and a volume mount that defines the path to mount the Volume.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+spec:
+  containers:
+  - name: redis
+    image: redis
+    volumeMounts:
+    - name: redis-storage
+      mountPath: /data/redis
+  volumes:
+  - name: redis-storage
+    emptyDir: {}
+
+
+
+    Create the Pod:
+
+    kubectl create -f redis.yaml
+
+    Verify that the Pod’s Container is running, and then watch for changes to the Pod:
+
+    kubectl get pod redis --watch
+
+    The output looks like this:
+
+    NAME      READY     STATUS    RESTARTS   AGE
+    redis     1/1       Running   0          13s
+
+    In another terminal, get a shell to the running Container:
+
+    kubectl exec -it redis -- /bin/bash
+
+    In your shell, go to /data/redis, and then create a file:
+
+    root@redis:/data# cd /data/redis/
+    root@redis:/data/redis# echo Hello > test-file
+
+    In your shell, list the running processes:
+
+    root@redis:/data/redis# apt-get update
+    root@redis:/data/redis# apt-get install procps
+    root@redis:/data/redis# ps aux
+
+    The output is similar to this:
+
+    USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+    redis        1  0.1  0.1  33308  3828 ?        Ssl  00:46   0:00 redis-server *:6379
+    root        12  0.0  0.0  20228  3020 ?        Ss   00:47   0:00 /bin/bash
+    root        15  0.0  0.0  17500  2072 ?        R+   00:48   0:00 ps aux
+
+    In your shell, kill the Redis process:
+
+    root@redis:/data/redis# kill <pid>
+
+    where <pid> is the Redis process ID (PID).
+
+    In your original terminal, watch for changes to the Redis Pod. Eventually, you will see something like this:
+
+    NAME      READY     STATUS     RESTARTS   AGE
+    redis     1/1       Running    0          13s
+    redis     0/1       Completed  0         6m
+    redis     1/1       Running    1         6m
+
+At this point, the Container has terminated and restarted. This is because the Redis Pod has a restartPolicy of Always.
+
+    Get a shell into the restarted Container:
+
+    kubectl exec -it redis -- /bin/bash
+
+    In your shell, goto /data/redis, and verify that test-file is still there.
+
+    root@redis:/data/redis# cd /data/redis/
+    root@redis:/data/redis# ls
+    test-file
+
+    Delete the Pod that you created for this exercise:
+
+    kubectl delete pod redis
+
+
+
+
+#############################Volume ########################################################
+
+
+###############PersistentVolume for Storage############################
+
+
+
+Kubernetes Volumes vs Persistent Volumes
+There are currently two types of storage abstracts available with Kubernetes: Volumes and Persistent Volumes. A Kubernetes volume exists only while the containing pod exists. 
+Once the pod is deleted, the associated volume is also deleted. As a result, Kubernetes volumes are useful for storing temporary data that does not need to exist outside of the pod’s lifecycle.
+Kubernetes persistent volumes remain available outside of the pod lifecycle – this means that the volume will remain even after the pod is deleted. It is available to claim by another pod if required, and the data is retained. 
+So how does the usage of Kubernetes volumes differ from Kubernetes persistent volumes? The answer is quite simple : Kubernetes persistent volumes are used in situations where the data needs to be retained regardless of the pod lifecycle.
+Kubernetes volumes are used for storing temporary data.
+
+Why do we use persistent volumes?
+In the earlier days of containerization there were some pretty strict rules / best practices put in place. 
+First and foremost was that containers should be stateless. 
+As Kubernetes has matured and container native storage solutions (such as Portworx) have been created, there is no real reason to draw the line at stateless applications.
+ You may want to gain the benefits of having your application in a container (fast startup, high availability, self healing etc) but also store, retain and back up data created or used by that application. 
+ 
+Persistent Volumes: A use case
+The most common use case for Persistent volumes in Kubernetes is for databases. 
+Obviously a database needs to have access to its data at all times, and by leveraging PVs, we can start using databases like MySQL, Cassandra, CockroachDB and even MS SQL for our applications. 
+By ensuring the consistent state of our data, we can start putting complex workloads into containers, and not just stateless, 12-factor style web applications. 
+By utilizing persistent volumes, we can simplify the deployment of distributed, stateful applications (such as Cassandra DB). When deploying Cassandra, we ensure that the following happens:
+Each pod is created (with appropriate config and environment variables required)
+A persistent volume is attached to the pod (via a persistent volume claim)
+The claimed storage is mounted inside the pod as required. 
+
+
+
+
+[root@master ~]# mkdir /mnt/data
+[root@master ~]# echo 'Hello from Kubernetes storage master' > /mnt/data/index.html
+
+
+[root@node1 ~]# mkdir /mnt/data
+[root@node1 ~]# echo 'Hello from Kubernetes storage node1' > /mnt/data/index.html
+
+pv-volume.yaml
+
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+
+
+
+	
+[root@master ~]# kubectl get pv task-pv-volume
+NAME             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+task-pv-volume   10Gi       RWO            Retain           Available           manual                  7s
+[root@master ~]#
+
+
+
+Create a PersistentVolumeClaim
+
+pv-claim.yaml
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: task-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi	
+
+	  Create the PersistentVolumeClaim:
+
+kubectl create -f pv-claim.yaml
+
+
+[root@master ~]# kubectl get pv task-pv-volume
+NAME             CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                   STORAGECLASS   REASON   AGE
+task-pv-volume   10Gi       RWO            Retain           Bound    default/task-pv-claim   manual                  84s
+[root@master ~]#
+
+
+
+[root@master ~]# kubectl get pvc task-pv-claim
+NAME            STATUS   VOLUME           CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+task-pv-claim   Bound    task-pv-volume   10Gi       RWO            manual         55s
+[root@master ~]#
+
+
+
+
+
+
+Create a Pod
+
+The next step is to create a Pod that uses your PersistentVolumeClaim as a volume.
+
+Here is the configuration file for the Pod:
+
+
+pv-pod.yaml 
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: task-pv-pod
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+       claimName: task-pv-claim
+  containers:
+    - name: task-pv-container
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: task-pv-storage
+		  
+		  
+[root@master ~]# kubectl create -f pv-pod.yaml
+pod/task-pv-pod created
+[root@master ~]# kubectl get pod task-pv-pod
+NAME          READY   STATUS    RESTARTS   AGE
+task-pv-pod   1/1     Running   0          8s
+[root@master ~]# kubectl exec -it task-pv-pod -- /bin/bash
+root@task-pv-pod:/# apt-get update
+Get:2 http://security.debian.org/debian-security stretch/updates InRelease [94.3 kB]
+Ign:1 http://cdn-fastly.deb.debian.org/debian stretch InRelease
+Get:3 http://cdn-fastly.deb.debian.org/debian stretch-updates InRelease [91.0 kB]
+Get:4 http://cdn-fastly.deb.debian.org/debian stretch Release [118 kB]
+Get:5 http://cdn-fastly.deb.debian.org/debian stretch Release.gpg [2434 B]
+Get:6 http://cdn-fastly.deb.debian.org/debian stretch-updates/main amd64 Packages [5148 B]
+Get:7 http://cdn-fastly.deb.debian.org/debian stretch/main amd64 Packages [7099 kB]
+Get:8 http://security.debian.org/debian-security stretch/updates/main amd64 Packages [452 kB]
+Fetched 7862 kB in 3s (2061 kB/s)
+Reading package lists... Done
+root@task-pv-pod:/# apt-get install curl
+root@task-pv-pod:/# curl localhost
+ root@task-pv-pod:/# curl localhost
+Hello from Kubernetes storage node1
+root@task-pv-pod:/#
+
+
+
+
+
+
+	
+
+Configure NFS Server to share directories on your Network.
+This example is based on the environment below. 
+
+
+yum -y install nfs-utils 
+
+
+vi /etc/idmapd.conf
+# line 5: uncomment and change to your domain name
+
+Domain = rmohan.com 
+
+
+mkdir /nfs
+
+vi /etc/exports
+
+/nfs     192.168.1.0/24(rw,no_root_squash)
+
+
+[root@dlp ~]# yum -y install nfs-utils
+[root@dlp ~]# vi /etc/idmapd.conf
+# line 5: uncomment and change to your domain name
+Domain = rmohan.com 
+
+vi /etc/exports
+# write settings for NFS exports
+
+/home 10.0.0.0/24(rw,no_root_squash)
+systemctl start rpcbind nfs-server
+systemctl enable rpcbind nfs-server
+
+ 
+ 
+configure NFS Client.
+[root@node1 ~]# yum -y install nfs-utils 
+ vi /etc/idmapd.conf
+# line 5: uncomment and change to your domain name
+Domain = rmohan.com 
+ [root@node1 ~]# systemctl start rpcbind
+[root@node1 ~]# systemctl enable rpcbind
+mkdir /nfs
+mount -t nfs master.rmohan.com:/nfs /nfs 
+
+
+# create PV definition
+
+[root@master ~]# vi nfs-pv.yml
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  # any PV name
+  name: nfs-pv
+spec:
+  capacity:
+    # storage size
+    storage: 10Gi
+  accessModes:
+    # ReadWriteMany(RW from multi nodes), ReadWriteOnce(RW from a node), ReadOnlyMany(R from multi nodes)
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy:
+    # retain even if pods terminate
+    Retain
+  nfs:
+    # NFS server's definition
+    path: /nfs/pv1
+    server: 192.168.1.70
+    readOnly: false
+
+[root@master ~]# kubectl create -f nfs-pv.yml
+persistentvolume "nfs-pv" created
+
+
+[root@master ~]# kubectl get pv
+
+NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS    CLAIM             STORAGECLASS   REASON    AGE
+nfs-pv    10Gi       RWX            Retain           Bound     default/nfs-pvc                            2d
+
+# create PVC definition
+
+[root@master ~]# vi nfs-pvc.yml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  # any PVC name
+  name: nfs-pvc
+spec:
+  accessModes:
+  # ReadWriteMany(RW from multi nodes), ReadWriteOnce(RW from a node), ReadOnlyMany(R from multi nodes)
+  - ReadWriteMany
+  resources:
+     requests:
+       # storage size to use
+       storage: 1Gi
+
+[root@master ~]# kubectl create -f nfs-pvc.yml
+
+persistentvolumeclaim "nfs-pvc" created
+[root@master ~]# kubectl get pvc
+
+NAME      STATUS    VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+nfs-pvc   Bound     nfs-pv    10Gi       RWX                           2d
+
+[3] 	Create a Pod with PVC above.
+[root@master ~]# vi nginx-nfs.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  # any Pod name
+  name: nginx-nfs
+  labels:
+    name: nginx-nfs
+spec:
+  containers:
+    - name: nginx-nfs
+      image: fedora/nginx
+      ports:
+        - name: web
+          containerPort: 80
+      volumeMounts:
+        - name: nfs-share
+          # mount point in container
+          mountPath: /usr/share/nginx/html
+  volumes:
+    - name: nfs-share
+      persistentVolumeClaim:
+        # PVC name you created
+        claimName: nfs-pvc
+
+[root@master ~]# kubectl create -f nginx-nfs.yml
+
+pod "nginx-nfs" created
+# create a test file under the NFS shared directory
+
+[root@master ~]# echo 'NFS Persistent Storage Test' > /var/lib/nfs/share/index.html
+
+[root@master ~]# kubectl get pods -o wide
+NAME                     READY   STATUS      RESTARTS   AGE     IP          NODE               NOMINATED NODE
+hello-1539699360-l5m8z   0/1     Completed   0          2m30s   10.36.0.3   node2.rmohan.com   <none>
+hello-1539699420-xfnkf   0/1     Completed   0          90s     10.36.0.3   node2.rmohan.com   <none>
+hello-1539699480-zjjj6   0/1     Completed   0          30s     10.36.0.1   node2.rmohan.com   <none>
+nginx-6c847f87d9-ggbhh   1/1     Running     0          22h     10.44.0.2   node1.rmohan.com   <none>
+nginx-6c847f87d9-rvvzq   1/1     Running     0          22h     10.42.0.3   node3.rmohan.com   <none>
+nginx-6c847f87d9-xbm2d   1/1     Running     0          22h     10.36.0.2   node2.rmohan.com   <none>
+nginx-nfs                1/1     Running     0          3m53s   10.42.0.1   node3.rmohan.com   <none>
+
+
+# verify accessing
+
+[root@master ~]# curl 10.42.0.1
+NFS Persistent Storage Test 
+
+#############################Volume ########################################################
+
+
+
+
+
+Make nginx serve a docroot from the local fs
+
+Here the previous deployment and service will be removed. New ones will be deployed with a spec file. The nginx will also be configured to serve a local directory as docroot instead of the default /usr/share/nginx/html.
+
+On each worker machine, create a ```/var/sites/default```. On the master node, create a deployment spec called nginx-deployment.yml
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      run: web
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: web
+    spec:
+      containers:
+        - image: nginx
+          name: nginx-localroot
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: nginx-root
+      volumes:
+        - name: nginx-root
+          hostPath:
+            # directory location on host
+            path: /var/sites/default
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: web
+  name: nginx-lb
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+  externalIPs:
+  - 192.168.43.20
+  selector:
+    run: web
+  type: LoadBalancer
+Delete the previous deployment and then deploy a new one with the yml file.
+
+[root@k8s-ms ~]# kubectl  delete deployment nginx
+[root@k8s-ms ~]# kubectl  delete service nginx-lb
+[root@k8s-ms ~]# kubectl  create -f nginx-deployment.yml
+On each worker mode, create an index.html under /var/sites/default and test it from the master node
+
+[root@k8s-ms ~]# curl http://10.0.0.165
+Hello this is k8s-wk2
+[root@k8s-ms ~]# curl http://10.0.0.165
+Hello this is k8s-wk1
+Dump service in yaml
+This is one way to see how to write an yaml based on existing service.
+
+kubectl get svc nginx-lb -o yaml
+
+
+
+

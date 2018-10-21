@@ -1,0 +1,127 @@
+###########################nodeSelector #####################################
+
+
+nodeSelector
+
+Assigning Pods to Nodes
+
+kubectl label nodes node2.rmohan.com webserver=apache
+kubectl get node --show-labels
+kubectl get node -l webserver=apache
+cat > nodeselector.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: httpd
+spec:
+  containers:
+    - name: httpd
+      image: httpd
+  nodeSelector:
+    webserver: apache
+EOF
+
+kubectl create -f nodeselector.yaml
+kubectl get pods -o wide
+
+
+
+##############################################
+
+kubectl label nodes node1.rmohan.com  disktype=ssd
+
+
+
+cat > nodessd.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    disktype: ssd
+EOF
+
+kubectl create -f nodessd.yaml
+kubectl get pods -o wide
+
+
+
+
+Starting Pod on the specified host (using nodeSelector)
+
+
+Check the label of the host.
+
+[root@master ~]# kubectl get node --show-labels
+NAME                STATUS   ROLES    AGE     VERSION   LABELS
+master.rmohan.com   Ready    master   7m44s   v1.12.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=master.rmohan.com,node-role.kubernetes.io/master=
+node1.rmohan.com    Ready    <none>   6m24s   v1.12.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node1.rmohan.com
+node2.rmohan.com    Ready    <none>   6m22s   v1.12.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node2.rmohan.com
+node3.rmohan.com    Ready    <none>   6m19s   v1.12.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node3.rmohan.com
+
+
+Create a Pod definition file.
+Since Pod is started with master 2, specify "kubernetes.io/hostname: master2" for nodeSelector.
+[root @ master1 ~] # vi centos.yaml
+[root@master1 ~]# cat centos.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: centos
+  labels:
+    app: web
+spec:
+  containers:
+    - name: centos6
+      image: centos:centos6
+      command: ["sleep", "3600"]
+    - name: centos7
+      image: centos:centos7
+      command: ["sleep", "3600"]
+  nodeSelector:
+    kubernetes.io/hostname: node2.rmohan.com 
+
+
+Start Pod.
+[root@master1 ~]# kubectl create -f centos.yaml
+pod "centos" created
+
+Check the state of Pod. You can see that it is running on node2. 
+[root@master ~]# kubectl get pod -o wide --show-labels
+NAME                     READY   STATUS              RESTARTS   AGE    IP          NODE               NOMINATED NODE   LABELS
+centos                   0/2     ContainerCreating   0          30s    <none>      node2.rmohan.com   <none>           app=web
+httpd-5bf9cbc4cd-qjtv8   0/1     Terminating         0          4m2s   10.47.0.1   node1.rmohan.com   <none>           app=httpd,pod-template-hash=5bf9cbc4cd
+
+As a result, try running bash on centos7. It is found to be centos 7.3.
+[root@master ~]# kubectl exec centos -c centos7 -it bash
+[root@centos /]#
+[root@centos /]#
+[root@centos /]# uname -a
+Linux centos 3.10.0-693.21.1.el7.x86_64 #1 SMP Wed Mar 7 19:03:37 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+[root@centos /]# cat /etc/redhat-release
+CentOS Linux release 7.5.1804 (Core)
+[root@centos /]#
+
+As a matter of fact, try running bash at centos 6. It is understood that it is centos 6.8.
+[root@master1 ~]# kubectl exec centos -c centos6 -it bash
+[root@centos /]# exit
+[root@master ~]# kubectl exec centos -c centos6 -it bash
+[root@centos /]#
+[root@centos /]#
+[root@centos /]#
+[root@centos /]#  cat /etc/redhat-release
+CentOS release 6.10 (Final)
+[root@centos /]#
+
+[root@master1 ~]# kubectl delete pod centos
+pod "centos" deleted
+
+
+###########################nodeSelector #####################################

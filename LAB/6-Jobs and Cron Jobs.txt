@@ -1,0 +1,149 @@
+https://github.com/cloudavail/snippets/tree/df9e9b3f63ab077e33245183e1fe84901898177a/kubernetes/kubernetes_cronjob
+
+
+https://linuxhint.com/kubernetes-jobs-and-cron-jobs/
+
+
+cronjob.yaml
+
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+          restartPolicy: OnFailure
+
+		  
+kubectl run hello --schedule="*/1 * * * *" --restart=OnFailure --image=busybox -- /bin/sh -c "date; echo Hello from the Kubernetes cluster"		  
+	
+Create Cronjob
+
+kubectl apply -f cronjob.yaml
+
+
+
+
+[root@master ~]# kubectl get cronjob hello
+NAME    SCHEDULE      SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+hello   */1 * * * *   False     0        <none>          60s
+[root@master ~]#
+
+[root@master ~]#  kubectl get jobs --watch
+NAME               COMPLETIONS   DURATION   AGE
+hello-1540039440   0/1           44s        44s
+[root@master ~]#
+
+
+
+Deleting a Cron Job
+
+When you don’t need a cron job any more, delete it with kubectl delete cronjob:
+
+$ kubectl delete cronjob hello
+cronjob "hello" deleted
+
+kubectl delete -f cronjob.yaml
+ 
+ 
+
+
+############ Batch JOBS 
+
+
+vi batchjob.yaml
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    metadata:
+      name: pi
+    spec:
+      containers:
+      - name: pi
+        image: perl
+        command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+      restartPolicy: Never
+
+
+[root@master ~]# kubectl create -f batchjob.yaml
+job.batch/pi created
+
+
+[root@master ~]# kubectl describe jobs/pi
+Name:           pi
+Namespace:      default
+Selector:       controller-uid=a27ee882-d466-11e8-a500-000c2963c6f2
+Labels:         controller-uid=a27ee882-d466-11e8-a500-000c2963c6f2
+                job-name=pi
+Annotations:    <none>
+Parallelism:    1
+Completions:    1
+Start Time:     Sat, 20 Oct 2018 20:49:51 +0800
+Completed At:   Sat, 20 Oct 2018 20:50:33 +0800
+Duration:       42s
+Pods Statuses:  0 Running / 1 Succeeded / 0 Failed
+Pod Template:
+  Labels:  controller-uid=a27ee882-d466-11e8-a500-000c2963c6f2
+           job-name=pi
+  Containers:
+   pi:
+    Image:      perl
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      perl
+      -Mbignum=bpi
+      -wle
+      print bpi(2000)
+    Environment:  <none>
+    Mounts:       <none>
+  Volumes:        <none>
+Events:
+  Type    Reason            Age   From            Message
+  ----    ------            ----  ----            -------
+  Normal  SuccessfulCreate  50s   job-controller  Created pod: pi-k7snn
+[root@master ~]#
+
+
+#List out pod relevent to the pods regarding jobs
+
+$ pods=$(kubectl get pods --selector=job-name=pi --output=jsonpath={.items..metadata.name})
+echo $pods
+pi-aiw0a
+
+##Gets the log of it
+
+$ kubectl logs $pods
+
+##Scale it to a greater number
+
+$ kubectl scale --replicas=5 jobs/pi
+
+##Lets delete it
+
+
+$ kubectl delete jobs/pi
+
+
+
+[root@master ~]# kubectl delete -f batchjob.yaml
+job.batch "pi" deleted
+
+
+
+

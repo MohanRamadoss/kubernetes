@@ -1,0 +1,256 @@
+﻿Install Kubernetes Cluster with Ansible based tool Kubespray 
+
+Install on Deployment Node
+
+yum install -y epel-release
+yum install -y ansible git gcc python-pip python-devel python-netaddr libffi-devel openssl-devel
+
+
+Install client end 
+yum install -y  gcc python-pip python-devel python-netaddr libffi-devel openssl-devel
+
+
+
+Install PIP on deployment Node 
+pip install pip --upgrade
+pip install jinja2
+
+
+Disable swap on all server 
+
+swapoff
+
+sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+
+
+Generate the SSH KEY FILES  on deployment node and send to all other servers
+
+ssh-keygen
+
+
+
+cmd to push key file to other nodes 
+
+NODES=(192.168.1.70 192.168.1.71 192.168.1.72 192.168.1.73 192.168.1.74)
+for NODE in ${NODES[@]}
+do
+  ssh-copy-id -i ~/.ssh/id_rsa.pub root@$NODE
+done
+
+
+
+Prequesites 
+
+
+cat <<EOF > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+run the cmd to update sysctl 
+
+[root@master ~]# sysctl --system
+
+
+yum install -y yum-utils device-mapper-persistent-data lvm2
+
+
+Git clone the Kubespray repository on one of the master servers:
+
+
+git clone https://github.com/kubernetes-incubator/kubespray.git
+
+
+ Go to the ‘Kubespray’ directory and install all dependency packages
+
+    (Install dependencies from requirements.txt)
+
+cd kubespray
+
+pip install --upgrade pip
+
+pip install -r requirements.txt
+	
+	
+Review and change parameters under ``inventory/mycluster/group_vars``
+
+    vi inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
+    vi inventory/mycluster/group_vars/all/all.yml
+
+Some changes you may want to look for are:
+
+Changing the network as per your liking in “inventory/mycluster/group_vars/k8s-cluster.yml”
+
+Choose network plugin (cilium, calico, contiv, weave or flannel)
+
+# Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
+
+kube_network_plugin: weave
+
+
+k8s-cluster.yml
+
+kubelet_max_pods: 100
+cluster_name: prod
+helm_enabled: true
+
+- In “inventory/mycluster/group_vars/all.yml”  uncomment the following line to enable metrics to fetch the cluster resource utilization data without this HPAs will not work (for ‘kubectl top nodes’ & ‘kubectl top pods’ commands to work)
+
+# The read-only port for the Kubelet to serve on with no authentication/authorization. Uncomment to enable.
+
+kube_read_only_port: 10255
+
+
+
+/root/kubespray/inventory
+
+
+cp -pR sample mycluster
+
+declare -a IPS=(192.168.1.70 192.168.1.71 192.168.1.72 192.168.1.73 192.168.1.74)
+CONFIG_FILE=inventory/mycluster/hosts.ini python36 contrib/inventory_builder/inventory.py ${IPS[@]}
+
+ansible all -i  hosts.ini -m shell -a  'sudo sysctl -w net.ipv4.ip_forward=1'
+ansible all -i hosts.ini -m shell -a 'systemctl stop firewalld &&  systemctl disable firewalld && systemctl mask firewalld  &&   yum remove -y firewalld'
+
+
+vi hosts.ini
+
+[all]
+master   ansible_ssh_host=192.168.1.70 
+master1  ansible_ssh_host=192.168.1.71
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+[kube-master]
+master
+master1
+
+[etcd]
+master
+master1
+node1
+node2
+node3
+
+[kube-node]
+master
+master1
+node1
+node2
+node3
+
+
+[k8s-cluster:children]
+master
+node1 
+
+[calico-rr]
+
+[vault]
+node1
+node2
+node3
+
+
+[all:vars]
+ansible_ssh_port=22
+ansible_ssh_user=root
+ansible_ssh_pass=test123
+ansible_sudo_pass=test123
+
+
+
+Now we are all set for the big, red switch:
+
+Deploy Kubespray with Ansible Playbook
+
+ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml
+
+ansible-playbook  -u root  -i inventory/mycluster/hosts.ini --flush-cache cluster.yml -vv 
+
+
+
+
+
+Once this step is completed, the multi-master Kubernetes cluster should be ready for deploying your application.
+
+-  Check the status of the cluster now and all nodes should be in ‘Ready’ status:
+
+~]# kubectl get nodes
+NAME      STATUS    ROLES         AGE       VERSION
+node1     Ready     master,node   4m        v1.10.3
+node2     Ready     master,node   4m        v1.10.3
+node3     Ready     master,node   4m        v1.10.3
+node4     Ready     node          4m        v1.10.3
+node5     Ready     node          4m        v1.10.3
+
+
+===================================================================
+
+Additional steps might be needed while working with K8s cluster
+
+1.  Adding a new node (node3 - 192.168.1.74) to a cluster: If you wish to add a new node server into the cluster, perform following steps:
+
+-  Add the server node-3 to “inventory/mycluster/hosts.ini” file
+
+    In “[all]” section:
+
+[all]
+master   ansible_ssh_host=192.168.1.70 
+master1  ansible_ssh_host=192.168.1.71
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+In “[kube-node]” section:  (It can be kept along with other 5 nodes or as a single line also, won’t matter)
+
+[kube-node]
+node1
+node2
+node3
+node4
+node5
+node6
+OR
+
+[kube-node]
+node3
+Now run the following command to scale your cluster:
+
+ansible-playbook -i inventory/mycluster/hosts.ini scale.yml
+
+
+2.  Removing a new node (node3 - 192.168.1.74) from cluster:
+
+-  Keep the server to “inventory/mycluster/hosts.ini” file
+
+    In “[all]” section:
+
+    
+[all]
+master   ansible_ssh_host=192.168.1.70 
+master1  ansible_ssh_host=192.168.1.71
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+
+In the “[kube-node]” section keep ONLY the node server which needs to be removed from cluster. So in this example, we will keep only “node3” mentioned.  (If any other nodes are kept in here, they will also be removed from the cluster)
+
+[kube-node]
+node3
+Now run the following command to scale your cluster:
+
+  ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml
+3.   Reset the entire cluster for fresh installation:
+
+Keep the “hosts.ini” updated properly with all servers mentioned in the correct sections, and run   the following command:
+
+ ansible-playbook -i inventory/mycluster/hosts.ini reset.yml
