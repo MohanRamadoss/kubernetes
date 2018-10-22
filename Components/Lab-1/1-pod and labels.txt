@@ -1,0 +1,405 @@
+﻿Node Object Definition
+
+The following is an example node object definition in Kubernetes:
+
+apiVersion: v1 
+kind: Node 
+metadata:
+  creationTimestamp: null
+  labels: 
+    kubernetes.io/hostname: node1.example.com
+  name: node1.example.com 
+spec:
+  externalID: node1.example.com 
+status:
+  nodeInfo:
+    bootID: ""
+    containerRuntimeVersion: ""
+    kernelVersion: ""
+    kubeProxyVersion: ""
+    kubeletVersion: ""
+    machineID: ""
+    osImage: ""
+    systemUUID: ""
+
+	apiVersion defines the API version to use.
+	kind set to Node identifies this as a definition for a node object.
+	metadata.labels lists any labels that have been added to the node.
+	metadata.name is a required value that defines the name of the node object. This value is shown in the NAME column when running the oc get nodes command.
+	spec.externalID defines the fully-qualified domain name where the node can be reached. Defaults to the metadata.name value when empty.
+
+	
+Demo 
+
+CREATING POD WITH LABELS USING YAML
+
+Create a YAML file and paste the below coding.
+
+Steps to create a POD with labels using KUBECTL and YAML
+
+
+
+	
+	
+Pod Definition
+
+The simplest Pod definition describes the deployment of a single container. For example, an nginx web server Pod might be defined as:
+pods/simple-pod.yaml 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.7.9
+    ports:
+    - containerPort: 80
+
+
+
+kubectl create -f https://k8s.io/examples/pods/simple-pod.yaml
+
+List all Pods:
+
+kubectl get pods
+
+
+ kubectl apply -f pod.yaml
+ or 
+ kubectl create -f pod.yaml
+
+ kubectl get pods
+ kubectl get pods --watch
+ kubectl get pods --show-labels
+
+
+ 
+	
+	
+what is pod kubernetes sample commands
+
+	
+//see pods list
+kubectl get pods --all-namespaces
+
+//see nginx pods
+kubectl get pods -l app=nginx
+
+//see pods with nodes they are running on
+kubectl get pods -o wide
+
+
+
+
+
+On most providers, the Pod IPs are not externally accessible. The easiest way to test that the pod is working is to create a busybox Pod and exec commands on it remotely. For more information, see Get a Shell to a Running Container.
+
+If the IP of the Pod is accessible, you can access its http endpoint with wget on port 80:
+
+kubectl run busybox --image=busybox --restart=Never --tty -i --generator=run-pod/v1 --env "POD_IP=$(kubectl get pod nginx -o go-template='{{.status.podIP}}')"
+u@busybox$ wget -qO- http://$POD_IP # Run in the busybox container
+u@busybox$ exit # Exit the busybox container
+
+kubectl delete pod busybox # Clean up the pod we created with "kubectl run"
+
+To delete a Pod named nginx:
+
+kubectl delete pod nginx
+
+#################
+
+
+kubectl run/kubectl get/kubectl delete
+
+Start Pod. The character string specified for run (nginx in the example below) is optional.
+
+[root@master ~]# kubectl run nginx --image=nginx
+kubectl create deployment  nginx --image=nginx
+
+
+ 
+ 
+Check the state of Pod.
+
+[root@master ~]# kubectl get pod
+NAME                    READY   STATUS    RESTARTS   AGE
+nginx-dbddb74b8-wvggv   1/1     Running   0          38s
+
+
+Confirm which host (master or node) Pod is running. Specify the -o wide option. You can see that Pod is operating in master.
+
+[root@master ~]# kubectl get pod -o wide
+NAME                    READY   STATUS    RESTARTS   AGE   IP          NODE               NOMINATED NODE
+nginx-dbddb74b8-wvggv   1/1     Running   0          84s   10.36.0.1   node3.rmohan.com   <none>
+
+
+
+
+
+Check the status of Deployment.
+
+[root@master ~]# kubectl get deployment
+NAME    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx   1         1         1            1           2m17s
+
+Exit Pod. Specify the name of Deployment, not the name of Pod.
+
+
+[root@master ~]# kubectl delete deployment nginx
+deployment "nginx" deleted
+
+[root@master ~]# kubectl get pod
+NAME                    READY   STATUS        RESTARTS   AGE
+nginx-dbddb74b8-wvggv   0/1     Terminating   0          2m59s
+
+[root@master ~]#
+
+
+#################
+
+How to activate multiple pods (--replicas)
+
+Activate two Pods. Specify "--replicas=2".
+
+[root@master ~]# kubectl run nginx --image=nginx --replicas=2
+
+Check the state of Pod. You can see that two Pods are running.
+
+[root@master ~]# kubectl get pod -o wide
+NAME                    READY   STATUS    RESTARTS   AGE   IP          NODE               NOMINATED NODE
+nginx-dbddb74b8-k8g54   1/1     Running   0          86s   10.44.0.2   node2.rmohan.com   <none>
+nginx-dbddb74b8-r2stq   1/1     Running   0          86s   10.36.0.1   node3.rmohan.com   <none>
+Exit Pod.
+
+
+[root@master ~]# kubectl delete deployment nginx
+deployment.extensions "nginx" deleted
+
+[root@master ~]# kubectl get pod -o wide
+NAME                    READY   STATUS        RESTARTS   AGE     IP          NODE               NOMINATED NODE
+nginx-dbddb74b8-k8g54   0/1     Terminating   0          3m31s   10.44.0.2   node2.rmohan.com   <none>
+[root@master ~]#
+
+######################################################################
+
+How to pass environment variables to Pod (-env)
+
+[root@master ~]# kubectl run nginx --image=nginx --env="TEST=test1"
+
+Check the state of Pod.
+
+[root@master ~]# kubectl get pod
+NAME                    READY   STATUS    RESTARTS   AGE
+nginx-dbc687f8f-gpr97   1/1     Running   0          38s
+
+[root@master ~]# kubectl get pod -o wide
+NAME                    READY   STATUS    RESTARTS   AGE   IP          NODE               NOMINATED NODE
+nginx-dbc687f8f-gpr97   1/1     Running   0          42s   10.36.0.1   node3.rmohan.com   <none>
+
+Run bash on Pod.
+
+[root@master ~]# kubectl exec nginx-dbc687f8f-gpr97 -it bash
+
+Display environment variables.
+
+[root@master ~]# kubectl exec nginx-dbc687f8f-gpr97 -it bash
+root@nginx-dbc687f8f-gpr97:/# echo $TEST
+test1
+root@nginx-dbc687f8f-gpr97:/# exit
+exit
+
+
+
+######################################################################
+
+
+Verify working to deploy test Pods.
+
+  
+[root@master k8s-code]# kubectl run test-nginx --image=nginx --replicas=2 --port=80
+deployment.apps/test-nginx created
+[root@master k8s-code]#
+ 
+[root@master k8s-code]# kubectl get pods -o wide
+NAME                          READY     STATUS    RESTARTS   AGE       IP          NODE
+test-nginx-6dcb78bc89-6rbwt   1/1       Running   0          23s       10.44.0.1   node1.rmohan.com
+test-nginx-6dcb78bc89-tdjmj   1/1       Running   0          22s       10.42.0.1   node2.rmohan.com
+
+[root@master k8s-code]# kubectl expose deployment test-nginx
+service/test-nginx exposed
+
+
+[root@master k8s-code]#kubectl describe service test-nginx
+
+
+[root@master k8s-code]# kubectl describe service test-nginx
+Name:              test-nginx
+Namespace:         default
+Labels:            run=test-nginx
+Annotations:       <none>
+Selector:          run=test-nginx
+Type:              ClusterIP
+IP:                10.101.138.75
+Port:              <unset>  80/TCP
+TargetPort:        80/TCP
+Endpoints:         10.42.0.1:80,10.44.0.1:80
+Session Affinity:  None
+Events:            <none>
+[root@master k8s-code]#  curl 10.101.138.75
+
+
+
+##################################
+How to label a pod (- labels)
+
+Start up with Pod labeled "os=linux".
+
+[root@master ~]# kubectl run nginx --image=nginx --labels="os=linux"
+deployment "nginx" created
+
+Check the label. You can see that it is labeled "os=linux".
+
+[root@master ~]# kubectl get pod --show-labels
+NAME                    READY   STATUS    RESTARTS   AGE   LABELS
+nginx-59b45df67-g5jbm   1/1     Running   0          39s   os=linux,pod-template-hash=59b45df67
+
+
+Activate Pod with different label.
+
+[root@master ~]# kubectl run nginx1 --image=nginx --labels="os=windows"
+deployment "nginx1" created
+
+
+[root@master ~]# kubectl run nginx1 --image=nginx --labels="os=windows"
+kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
+deployment.apps/nginx1 created
+[root@master ~]# kubectl get pod --show-labels
+NAME                      READY   STATUS              RESTARTS   AGE   LABELS
+nginx-59b45df67-g5jbm     1/1     Running             0          67s   os=linux,pod-template-hash=59b45df67
+nginx1-59fc556f89-nrgzh   0/1     ContainerCreating   0          4s    os=windows,pod-template-hash=59fc556f89
+
+
+[root@master ~]#kubectl get pods,deploy,rs,svc
+
+
+Check the label. You can see that it has a label.
+[root@master ~]# kubectl get pod --show-labels
+
+
+[root@master ~]# kubectl get pod --show-labels
+NAME                      READY   STATUS    RESTARTS   AGE   LABELS
+nginx-59b45df67-g5jbm     1/1     Running   0          93s   os=linux,pod-template-hash=59b45df67
+nginx1-59fc556f89-nrgzh   1/1     Running   0          30s   os=windows,pod-template-hash=59fc556f89
+Only those with the key "os" are displayed.
+
+[root@master ~]# kubectl get pod -L os
+
+
+##################################
+kubectl describe (detailed version of get)
+
+
+Get the status of Pod.
+[root@master ~]# kubectl get pod
+NAME                      READY   STATUS    RESTARTS   AGE
+nginx-59b45df67-g5jbm     1/1     Running   0          12m
+nginx1-59fc556f89-nrgzh   1/1     Running   0          11m
+
+
+
+Get the status of Pod. More detailed information can be obtained than get.
+
+
+Get the status of Pod. More detailed information can be obtained than get.
+[root@master ~]# kubectl describe pod nginx-59b45df67-g5jbm 
+Name:               nginx-59b45df67-g5jbm
+Namespace:          default
+Priority:           0
+PriorityClassName:  <none>
+Node:               node3.rmohan.com/192.168.43.23
+Start Time:         Mon, 08 Oct 2018 16:36:43 +0800
+Labels:             os=linux
+                    pod-template-hash=59b45df67
+Annotations:        <none>
+Status:             Running
+IP:                 10.36.0.1
+Controlled By:      ReplicaSet/nginx-59b45df67
+Containers:
+  nginx:
+    Container ID:   docker://b6c3874bf5a4eb14bf5d96cc8b29e059bf1c8f7eb44f6c741dce74fc824b106f
+    Image:          nginx
+    Image ID:       docker-pullable://docker.io/nginx@sha256:9ad0746d8f2ea6df3a17ba89eca40b48c47066dfab55a75e08e2b70fc80d929e
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Mon, 08 Oct 2018 16:36:49 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-kk6cd (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-kk6cd:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-kk6cd
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age   From                       Message
+  ----    ------     ----  ----                       -------
+  Normal  Scheduled  13m   default-scheduler          Successfully assigned default/nginx-59b45df67-g5jbm to node3.rmohan.com
+  Normal  Pulling    13m   kubelet, node3.rmohan.com  pulling image "nginx"
+  Normal  Pulled     13m   kubelet, node3.rmohan.com  Successfully pulled image "nginx"
+  Normal  Created    13m   kubelet, node3.rmohan.com  Created container
+  Normal  Started    13m   kubelet, node3.rmohan.com  Started container
+
+ 
+#################################################################### 
+
+Here is a simple manifest that creates  2 containers.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two-containers
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+  - name: alpine
+    image: alpine
+    command: ["watch", "wget", "-qO-", "localhost"]
+
+Create multi-containers Kubernetes Pods with kubectl create command
+
+Let’s use the manifest file to create a multi-containers kubernetes pods.
+
+kubectl create -f twopod.yaml
+
+Here we have 2 containers running
+
+$kubectl get pods
+
+NAME             READY     STATUS    RESTARTS   AGE
+
+two-containers   2/2       Running   0          8s
+
+kubectl describe pod two-containers
+
+##########################################################################################
+
+
+

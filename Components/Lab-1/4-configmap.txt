@@ -1,0 +1,238 @@
+https://github.com/cloudavail/snippets/tree/df9e9b3f63ab077e33245183e1fe84901898177a/kubernetes/kubernetes_env_var_from_config_map
+
+https://kubernetes.io/docs/tutorials/configuration/configure-redis-using-configmap/
+
+  
+####### Example 1 
+Create a Kubernetes configmap.
+ 
+vi development.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: env-variables-configmap
+  namespace: default
+data:
+  ENVIRONMENT: development
+  LOG_LEVEL: warn
+
+  
+create a running container.  
+  
+vi nginx.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      envFrom:
+        - configMapRef:
+            name: env-variables-configmap
+			
+			
+create a ConfigMap
+
+    Upload configmap: kubectl apply -f  development.yaml
+    Confirm uploaded: kubectl describe configmap env-variables-configmap
+
+Run Container
+
+kubectl apply -f nginx.yaml
+Login to Container, Echo Environment Variables
+
+    Login to Container: kubectl exec -it nginx /bin/bash
+    Once Logged In: echo $ENVIRONMENT and echo $LOG_LEVEL
+
+
+####### Example 2
+
+First create a ConfigMap from the redis-config file:
+pods/config/redis-config [Copy pods/config/redis-config to clipboard]
+
+maxmemory 2mb
+maxmemory-policy allkeys-lru
+
+
+
+curl -OL https://k8s.io/examples/pods/config/redis-config
+kubectl create configmap example-redis-config --from-file=redis-config
+kubectl get configmap example-redis-config -o yaml
+
+[root@master ~]# kubectl get configmap example-redis-config -o yaml
+apiVersion: v1
+data:
+  redis-config: |
+    maxmemory 2mb
+    maxmemory-policy allkeys-lru
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2018-10-20T12:05:52Z
+  name: example-redis-config
+  namespace: default
+  resourceVersion: "204372"
+  selfLink: /api/v1/namespaces/default/configmaps/example-redis-config
+  uid: 7d61a0ab-d460-11e8-a500-000c2963c6f2
+[root@master ~]#
+
+kubectl create -f https://k8s.io/examples/pods/config/redis-pod.yaml
+
+
+  
+########## Example 3
+
+
+
+configmap is a resource used when passing configuration information (key, value pair) from the host to Pod.
+  
+  
+1. Create a ConfigMap.
+-----------------------------------
+Create a ConfigMap.
+[root@master ~]# vi config.yaml
+[root@master ~]# cat config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  # key, value
+  test1: '11111'
+  test2: '22222'
+  
+Create a ConfigMap.
+
+[root@master secrets]# kubectl create -f config.yaml
+configmap/test-config created
+
+
+Check the created ConfigMap.
+
+[root@master secrets]# kubectl get configmap
+NAME          DATA   AGE
+test-config   2      50s
+[root@master secrets]#
+
+  
+Check the detailed information of the created ConfigMap.
+[root@master ~]# kubectl describe configmap test-config
+
+
+[root@master secrets]# kubectl describe configmap test-config
+Name:         test-config
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Data
+====
+test2:
+----
+22222
+test1:
+----
+11111
+Events:  <none>
+
+
+2. Pass the created ConfigMap to Pod
+
+Create a definition file of Pod.
+
+[root@master ~]# vi pod.yaml
+
+[root@master ~]# cat pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+    - name: example-container
+      image: busybox
+      # exec Keep it sleeping for operation by exec later
+      command: ["sleep", "3600"]
+      # ConfigMap Mount the ConfigMap
+      volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        # ConfigMap ConfigMap Specifies the name of the resource (the name obtained by kubectl get configmap)
+        name: test-config
+
+  
+ 
+Start Pod
+
+ 
+[root@master secrets]# kubectl create -f pod.yaml
+pod/test-pod created
+
+
+ Check the state of Pod.
+[root@master ~]# kubectl get pod
+  
+ 
+root@master secrets]# kubectl get pod
+NAME          READY   STATUS    RESTARTS   AGE
+secretstest   1/1     Running   0          11m
+test-pod      1/1     Running   0          31s
+
+
+Activate sh on Pod and check Key, Value of ConfigMap.
+
+[root@master secrets]# kubectl exec -it test-pod sh
+/ # ls
+bin   dev   etc   home  proc  root  run   sys   tmp   usr   var
+/ # cat /etc/config/test1
+11111/ #  cat /etc/config/test2
+22222/ #
+
+
+
+3. Dynamically change ConfigMap. Refer to the modified ConfigMap with Pod.
+------------------------------------------------------------
+Change ConfigMap dynamically.
+
+[root@master secrets]# kubectl edit configmap test-config
+
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+
+apiVersion: v1
+data:
+  test1: "88888" <=== '11111' to '88888'.
+  test2: "99999" <=== '22222' to '99999'. 
+  
+  
+ [root@master secrets]# kubectl edit configmap test-config
+configmap/test-config edited
+[root@master secrets]# kubectl get pod
+NAME          READY   STATUS    RESTARTS   AGE
+secretstest   1/1     Running   0          13m
+test-pod      1/1     Running   0          2m57s
+
+
+Check the Value of ConfigMap. It can be confirmed that Value has been changed.
+[root@master ~]# kubectl exec -it test-pod sh
+  
+[root@master ~]# kubectl exec -it test-pod cat /etc/config/test1
+99999[root@master ~]#
+[root@master ~]# kubectl exec -it test-pod cat /etc/config/test2
+
+
+[root@master secrets]# kubectl  delete configmap test-config
+configmap "test-config" deleted
+
+
+
+===============================================================
+
+

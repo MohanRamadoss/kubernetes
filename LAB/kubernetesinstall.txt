@@ -1,0 +1,426 @@
+
+
+Kubernetes Master and Slave
+
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.1.70 master.rmohan.com  master
+192.168.1.71 master1.rmohan.com  master1
+192.168.1.72 node1.rmohan.com  node1
+192.168.1.73 node2.rmohan.com  node2
+192.168.1.74 node3.rmohan.com  node3
+
+
+#################Pre-Requisties ###################################
+
+
+selinux disabled 
+
+
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+Disable SWAP
+
+Disable SWAP for kubernetes installation by running the following commands.
+
+swapoff -a
+
+
+Run the following command to update fstab so that swap remains disabled after a reboot.
+
+sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+
+# disable swap line
+
+#/dev/mapper/centos-swap swap                    swap    defaults        0 0
+
+
+cat <<EOF > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+
+[root@master ~]# sysctl --system
+
+setenforce 0
+sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+Enable br_netfilter
+For our next trick, we'll be enabling the br_netfilter kernel module on all three servers. This is done with the following commands:
+
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+
+
+Install Docker-ce
+It's time to install the necessary Docker tool. On all three machines, install the Docker-ce dependencies with the following command:
+
+yum install -y yum-utils device-mapper-persistent-data lvm2
+
+
+Master and nodes add the repo files 
+
+
+[root@master ~]# cat <<'EOF' > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+
+#################Pre-Requisties ##################################
+
+
+#################Installation Start from Here ########################
+
+[root@master ~]# yum -y install kubeadm kubelet kubectl  docker
+# only enabling, do not run yet
+
+[root@master ~]# systemctl enable kubelet
+
+
+[root@master ~]#  systemctl enable docker && systemctl enable kubelet
+                  systemctl start docker && systemctl start kubelet
+ 
+ 
+ 
+Step 3: Install kubeadm and docker package on both nodes
+
+[root@node1 ~]# yum  install kubeadm docker -y
+[root@node2 ~]# yum  install kubeadm docker -y
+
+
+Start and enable docker service
+[root@node1 ~]# systemctl restart docker && systemctl enable docker
+[root@node2 ~]# systemctl restart docker && systemctl enable docker
+
+
+
+##################################################################################
+
+Configure kubernetes
+ 
+   
+    
+INSTALLING NETWORK
+[root@master ~]# kubeadm init --apiserver-advertise-address 192.168.1.70 --pod-network-cidr=192.168.0.0/16
+
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubeadm join 192.168.1.70:6443 --token v4jsiw.sx3m5lr4isesrtna --discovery-token-ca-cert-hash sha256:00cc47035671b7dc7fb59c7ce6aef17253e25bf275c6d02a7d1659b1716092f5
+ 
+[root@master ~]#  mkdir -p $HOME/.kube
+[root@master ~]#  cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+[root@master ~]# chown $(id -u):$(id -g) $HOME/.kube/config
+[root@master ~]# export kubever=$(kubectl version | base64 | tr -d '\n')
+    
+
+Adding the network interface Configure Pod Network with weave.	
+	
+export kubever=$(kubectl version | base64 | tr -d '\n')
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+
+
+Install Calico and a single node etcd with the following command.
+
+kubectl apply -f \
+https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubeadm/1.7/calico.yaml
+
+
+
+   
+Join in Kubernetes Cluster which is initialized on Master Node.
+
+Now Join worker nodes to master node
+To join worker nodes to Master node, a token is required. Whenever kubernetes master initialized , then in the output we get command and token.  Copy that command and run on both nodes.
+
+[root@worker-node1 ~]# kubeadm join --token a3bd48.1bc42347c3b35851 1
+
+
+   
+kubeadm join 192.168.43.20:6443 --token kdmdgn.2j5qh2ppyyj95zok --discovery-token-ca-cert-hash sha256:9c9dc7979cc410c06debff71486db9d654e4446f59f0319265efe4f0221212b6
+
+[root@master ~]# kubectl get nodes
+[root@master ~]# kubectl get nodes
+NAME                STATUS    ROLES     AGE       VERSION
+master.rmohan.com   Ready     master    7m        v1.11.1
+node1.rmohan.com    Ready     <none>    4m        v1.11.1
+node2.rmohan.com    Ready     <none>    1m        v1.11.1
+node3.rmohan.com    Ready     <none>    53s       v1.11.1
+[root@master ~]#
+
+
+important command 
+
+kubectl version
+
+kubectl cluster-info
+
+kubectl get pods -n kube-system
+
+kubectl get events
+
+
+
+
+
+
+[root@master ~]# kubectl get cs
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok
+scheduler            Healthy   ok
+etcd-0               Healthy   {"health": "true"}
+
+[root@master ~]# kubectl version
+Client Version: version.Info{Major:"1", Minor:"11", GitVersion:"v1.11.1", GitCommit:"b1b29978270dc22fecc592ac55d903350454310a", GitTreeState:"clean", BuildDate:"2018-07-17T18:53:20Z", GoVersion:"go1.10.3", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"11", GitVersion:"v1.11.1", GitCommit:"b1b29978270dc22fecc592ac55d903350454310a", GitTreeState:"clean", BuildDate:"2018-07-17T18:43:26Z", GoVersion:"go1.10.3", Compiler:"gc", Platform:"linux/amd64"}
+[root@master ~]#
+
+[root@master ~]# kubectl cluster-info
+Kubernetes master is running at https://192.168.43.20:6443
+KubeDNS is running at https://192.168.43.20:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+[root@master ~]#
+
+[root@master ~]# kubectl get pods -n kube-system
+NAME                                        READY     STATUS    RESTARTS   AGE
+coredns-78fcdf6894-db7jl                    1/1       Running   0          8m
+coredns-78fcdf6894-rxxbt                    1/1       Running   0          8m
+etcd-master.rmohan.com                      1/1       Running   0          7m
+kube-apiserver-master.rmohan.com            1/1       Running   0          7m
+kube-controller-manager-master.rmohan.com   1/1       Running   0          7m
+kube-proxy-9rs95                            1/1       Running   0          1m
+kube-proxy-bfgv8                            1/1       Running   0          1m
+kube-proxy-tq56l                            1/1       Running   0          5m
+kube-proxy-wrjsd                            1/1       Running   0          8m
+kube-scheduler-master.rmohan.com            1/1       Running   0          7m
+weave-net-5r245                             2/2       Running   1          5m
+weave-net-fsl5n                             2/2       Running   1          1m
+weave-net-t9qm9                             2/2       Running   0          1m
+weave-net-twhp8                             2/2       Running   0          6m
+[root@master ~]#
+
+[root@master ~]# kubectl get events
+[root@master ~]# kubectl get pods -n kube-system
+
+Installing of Dashboard
+
+[root@master ~]#  kubectl apply -f https://gist.githubusercontent.com/initcron/32ff89394c881414ea7ef7f4d3a1d499/raw/4863613585d05f9360321c7141cc32b8aa305605/kube-dashboard.yaml
+[root@master ~]# kubectl describe svc kubernetes-dashboard -n kube-system
+
+
+[root@master ~]# kubectl apply -f https://gist.githubusercontent.com/initcron/32ff89394c881414ea7ef7f4d3a1d499/raw/4863613585d05f9360321c7141cc32b8aa305605/kube-dashboard.yaml
+serviceaccount/kubernetes-dashboard created
+clusterrolebinding.rbac.authorization.k8s.io/kubernetes-dashboard created
+deployment.extensions/kubernetes-dashboard created
+service/kubernetes-dashboard created
+[root@master ~]#
+[root@master ~]#
+[root@master ~]# kubectl describe svc kubernetes-dashboard -n kube-system
+Name:                     kubernetes-dashboard
+Namespace:                kube-system
+Labels:                   k8s-app=kubernetes-dashboard
+Annotations:              kubectl.kubernetes.io/last-applied-configuration={"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"k8s-app":"kubernetes-dashboard"},"name":"kubernetes-dashboard","namespace":...
+Selector:                 k8s-app=kubernetes-dashboard
+Type:                     NodePort
+IP:                       10.108.152.76
+Port:                     <unset>  80/TCP
+TargetPort:               9090/TCP
+NodePort:                 <unset>  31000/TCP       
+Endpoints:                <none>
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   <none>
+
+
+
+
+[root@master ~]# curl http://192.168.43.20:31000
+[root@master ~]# curl http://192.168.43.20:31000
+
+
+###########################################
+===============
+
+
+Kubernetes  Mikiube Setup 
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.1.71 master1.rmohan.com  master1
+
+
+minikube start
+kubectl config use-context minikube
+kubectl version
+
+
+
+[root@master1 ~]# yum -y install qemu-kvm libvirt libvirt-daemon-kvm
+[root@master1 ~]# systemctl start libvirtd
+
+[root@master1 ~]# systemctl enable libvirtd
+
+[2] 	Configure Kubernetes repository and Install Minikube.
+[root@master1 ~]# cat <<'EOF' > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+[root@master1 ~]# yum -y install kubectl
+[root@master1 ~]# wget https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 -O minikube
+
+[root@master1 ~]# wget https://storage.googleapis.com/minikube/releases/latest/docker-machine-driver-kvm2
+
+[root@master1 ~]# chmod 755 minikube docker-machine-driver-kvm2
+
+[root@master1 ~]# mv minikube docker-machine-driver-kvm2 /usr/local/bin/
+[root@master1 ~]# minikube version
+
+minikube version: v0.25.2
+[root@master1 ~]# kubectl version -o json
+
+{
+  "clientVersion": {
+    "major": "1",
+    "minor": "10",
+    "gitVersion": "v1.10.0",
+    "gitCommit": "fc32d2f3698e36b93322a3465f63a14e9f0eaead",
+    "gitTreeState": "clean",
+    "buildDate": "2018-03-26T16:55:54Z",
+    "goVersion": "go1.9.3",
+    "compiler": "gc",
+    "platform": "linux/amd64"
+  }
+}
+
+# start minikube
+
+[root@master1 ~]# minikube start --vm-driver kvm2  --network-plugin=cni 
+
+Starting local Kubernetes v1.9.4 cluster...
+Starting VM...
+Downloading Minikube ISO
+ 142.22 MB / 142.22 MB  100.00% 0s
+Getting VM IP address...
+Moving files into cluster...
+Downloading localkube binary
+ 163.02 MB / 163.02 MB  100.00% 0s
+ 65 B / 65 B  100.00% 0s
+Setting up certs...
+Connecting to cluster...
+Setting up kubeconfig...
+Starting cluster components...
+Kubectl is now configured to use the cluster.
+Loading cached images from config file.
+
+# show status
+
+[root@master1 ~]# minikube status
+
+minikube: Running
+cluster: Running
+kubectl: Correctly Configured: pointing to minikube-vm at 192.168.39.110
+[root@master1 ~]# minikube service list
+
+|-------------|----------------------|-----------------------------|
+|  NAMESPACE  |         NAME         |             URL             |
+|-------------|----------------------|-----------------------------|
+| default     | kubernetes           | No node port                |
+| kube-system | kube-dns             | No node port                |
+| kube-system | kubernetes-dashboard | http://192.168.39.110:30000 |
+|-------------|----------------------|-----------------------------|
+
+[root@master1 ~]# minikube docker-env
+
+export DOCKER_TLS_VERIFY="1"
+export DOCKER_HOST="tcp://192.168.39.110:2376"
+export DOCKER_CERT_PATH="/root/.minikube/certs"
+export DOCKER_API_VERSION="1.23"
+# Run this command to configure your shell:
+# eval $(minikube docker-env)
+
+[root@master1 ~]# kubectl cluster-info
+
+Kubernetes master is running at https://192.168.39.110:8443
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+[root@master1 ~]# kubectl get nodes
+
+NAME       STATUS    ROLES     AGE       VERSION
+minikube   Ready     <none>    1h        v1.9.4
+
+# a VM [minikube] is just running
+
+[root@master1 ~]# virsh list
+
+ Id    Name                           State
+----------------------------------------------------
+ 1     minikube                       running
+ 
+
+# possible to access with SSH to the VM
+
+[root@master1 ~]# minikube ssh
+
+                         _             _
+            _         _ ( )           ( )
+  ___ ___  (_)  ___  (_)| |/')  _   _ | |_      __
+/' _ ` _ `\| |/' _ `\| || , <  ( ) ( )| '_`\  /'__`\
+| ( ) ( ) || || ( ) || || |\`\ | (_) || |_) )(  ___/
+(_) (_) (_)(_)(_) (_)(_)(_) (_)`\___/'(_,__/'`\____)
+
+$ hostname
+
+minikube
+$ docker ps
+
+CONTAINER ID IMAGE                             COMMAND                CREATED     STATUS  PORTS NAMES
+7d769e956904 fed89e8b4248                      "/sidecar --v=2 --..." 3 hours ago Up 3 ho       k8s_si..
+39680ff90ecf 459944ce8cc4                      "/dnsmasq-nanny -v..." 3 hours ago Up 3 ho       k8s_dn..
+e568a2ac6088 512cd7425a73                      "/kube-dns --domai..." 3 hours ago Up 3 ho       k8s_ku..
+fd9bd248d82f e94d2f21bc0c                      "/dashboard --inse..." 3 hours ago Up 3 ho       k8s_ku..
+f2c59bf5dd0a gcr.io/k8s-minikube/storage-prer  "/storage-provisioner" 3 hours ago Up 3 ho       k8s_st..
+203ac12b2138 gcr.io/google_containers/pause3.0 "/pause"               3 hours ago Up 3 ho       k8s_PO..
+6d88074f01dc gcr.io/google_containers/pause3.0 "/pause"               3 hours ago Up 3 ho       k8s_PO..
+d44ea81b29f1 gcr.io/google_containers/pause3.0 "/pause"               3 hours ago Up 3 ho       k8s_PO..
+3b26e522321b d166ffa9201a                      "/opt/kube-addons.sh"  3 hours ago Up 3 ho       k8s_ku..
+5a0a0833416d gcr.io/google_containers/pause3.0 "/pause"               3 hours ago Up 3 ho       k8s_PO..
+
+$ exit
+# to stop minikube, do like follows
+
+[root@master1 ~]# minikube stop
+
+Stopping local Kubernetes cluster...
+Machine stopped.
+# to remove minikube, do like follows
+
+[root@master1 ~]# minikube delete
+
+Deleting local Kubernetes cluster...
+Machine deleted.
+[root@master1 ~]# virsh list --all
+
+ Id    Name                           State
+----------------------------------------------------
+
+
+###############################################################################

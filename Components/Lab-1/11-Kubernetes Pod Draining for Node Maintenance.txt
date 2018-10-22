@@ -1,0 +1,179 @@
+
+
+###########################Kubernetes Pod Draining for Node Maintenance###########################
+
+
+
+========================================
+ kubectl cordon
+========================================
+
+
+Both kubectl cordon and kubectl drain prohibit new deployment of Pods to specified hosts. The difference is as follows.
+- kubectl cordon: kubectl If a pod is running on the host specified by cordon, that pod is still running on that host.
+- kubectl drain: If pod is running on the host specified by kubectl drain, move the pod to another host.
+
+
+Check the status of the host (master and node).
+[root@master ~]# kubectl get node
+NAME                STATUS    ROLES     AGE       VERSION
+master.rmohan.com   Ready     master    5h        v1.11.1
+node1.rmohan.com    Ready     <none>    5h        v1.11.1
+node2.rmohan.com    Ready     <none>    5h        v1.11.1
+node3.rmohan.com    Ready     <none>    5h        v1.11.1
+
+
+
+[root@master ~]# kubectl cordon node3.rmohan.com
+node/master.rmohan.com cordoned
+
+
+Activate 4 Pods.
+[root@master ~]# kubectl run nginx --image=nginx --replicas=4
+deployment.apps/nginx created
+
+Exit Pod.
+
+
+
+
+[root@master ~]#  kubectl uncordon node3.rmohan.com
+node/master.rmohan.com uncordoned
+[root@master ~]#
+
+
+[root@master secret]# kubectl get nodes -o wide
+NAME                 STATUS     ROLES    AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION               CONTAINER-RUNTIME
+master.rmohan.com    Ready      master   39h   v1.12.1   192.168.1.70   <none>        CentOS Linux 7 (Core)   3.10.0-862.14.4.el7.x86_64   docker://1.13.1
+master2.rmohan.com   NotReady   <none>   39h   v1.12.1   192.168.1.71   <none>        CentOS Linux 7 (Core)   3.10.0-862.14.4.el7.x86_64   docker://1.13.1
+node1.rmohan.com     Ready      <none>   39h   v1.12.1   192.168.1.72   <none>        CentOS Linux 7 (Core)   3.10.0-862.14.4.el7.x86_64   docker://1.13.1
+node2.rmohan.com     Ready      <none>   39h   v1.12.1   192.168.1.73   <none>        CentOS Linux 7 (Core)   3.10.0-862.14.4.el7.x86_64   docker://1.13.1
+node3.rmohan.com     Ready      <none>   39h   v1.12.1   192.168.1.74   <none>        CentOS Linux 7 (Core)   3.10.0-862.14.4.el7.x86_64   docker://1.13.1
+[root@master secret]#
+
+
+
+
+Prohibit Pod deployment to the master (master)
+
+[root@master ~]# kubectl cordon node3.rmohan.com
+node/master.rmohan.com cordoned
+
+
+[root@master ~]# kubectl get node
+NAME                STATUS                     ROLES     AGE       VERSION
+master.rmohan.com   Ready,SchedulingDisabled   master    5h        v1.11.1
+node1.rmohan.com    Ready                      <none>    5h        v1.11.1
+node2.rmohan.com    Ready                      <none>    5h        v1.11.1
+node3.rmohan.com    Ready                      <none>    5h        v1.11.1
+[root@master ~]#
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS    RESTARTS   AGE       IP          NODE
+multiple-container       2/2       Running   0          13m       10.42.0.1   node2.rmohan.com
+nginx-64f497f8fd-9qnlr   1/1       Running   0          2m        10.42.0.3   node2.rmohan.com
+nginx-64f497f8fd-f2wmt   1/1       Running   0          2m        10.44.0.1   node1.rmohan.com
+nginx-64f497f8fd-nglql   1/1       Running   0          2m        10.36.0.3   node3.rmohan.com
+nginx-64f497f8fd-tcksx   1/1       Running   0          2m        10.44.0.2   node1.rmohan.com
+secretstest              1/1       Running   0          2h        10.36.0.2   node3.rmohan.com
+test-pod                 1/1       Running   0          26m       10.42.0.2   node2.rmohan.com
+[root@master ~]#
+[root@master ~]# kubectl run nginx --image=nginx --replicas=4
+deployment.apps/nginx created
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS              RESTARTS   AGE       IP          NODE
+multiple-container       2/2       Running             0          14m       10.42.0.1   node2.rmohan.com
+nginx-64f497f8fd-9rdzx   0/1       ContainerCreating   0          2s        <none>      node3.rmohan.com
+nginx-64f497f8fd-dknjj   0/1       ContainerCreating   0          2s        <none>      node1.rmohan.com
+nginx-64f497f8fd-g22b6   0/1       ContainerCreating   0          2s        <none>      node1.rmohan.com
+nginx-64f497f8fd-jcjnl   0/1       ContainerCreating   0          2s        <none>      node2.rmohan.com
+secretstest              1/1       Running             0          2h        10.36.0.2   node3.rmohan.com
+test-pod                 1/1       Running             0          27m       10.42.0.2   node2.rmohan.com
+
+
+Release prohibition of Pod deployment to master.
+
+[root@master ~]# kubectl uncordon master.rmohan.com
+node/master.rmohan.com uncordoned
+
+[root@master ~]# kubectl uncordon master.rmohan.com
+node/master.rmohan.com uncordoned
+[root@master ~]# kubectl get node
+NAME                STATUS    ROLES     AGE       VERSION
+master.rmohan.com   Ready     master    5h        v1.11.1
+node1.rmohan.com    Ready     <none>    5h        v1.11.1
+node2.rmohan.com    Ready     <none>    5h        v1.11.1
+node3.rmohan.com    Ready     <none>    5h        v1.11.1
+[root@master ~]#
+
+
+
+
+3.11 kubectl drain (Pod is prohibited) / kubectl uncordon (Pod is prohibited)
+
+delete the pods 
+
+kubectl delete deployment nginx
+ 
+
+Scale  Pods.
+[root@master secret]# kubectl scale deployment nginx --replicas=10
+deployment.extensions/nginx scaled
+
+
+
+Check the state of Pod. Pods are moving one by one on master (master) and node (node ​​1).
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS    RESTARTS   AGE       NODE
+nginx-2040093540-2oix4   1/1       Running   0          20s       node1
+nginx-2040093540-pkmvj   1/1       Running   0          20s       master
+
+Disable Pod deployment of   (master).
+[root@master ~]# kubectl drain master
+node "master" cordoned
+error: pods not managed by ReplicationController, Job, or DaemonSet: nginx-2040093540-pkmvj (use --force to override)
+
+[root@master ~]# kubectl drain master.rmohan.com --ignore-daemonsets
+node/master.rmohan.com already cordoned
+WARNING: Ignoring DaemonSet-managed pods: kube-proxy-wrjsd, weave-net-twhp8
+pod/coredns-78fcdf6894-db7jl evicted
+pod/coredns-78fcdf6894-rxxbt evicted
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS    RESTARTS   AGE       IP          NODE
+multiple-container       2/2       Running   6          35d       10.42.0.1   node2.rmohan.com
+nginx-64f497f8fd-775w6   1/1       Running   0          9m        10.44.0.1   node1.rmohan.com
+nginx-64f497f8fd-bv5kt   1/1       Running   0          9m        10.36.0.3   node3.rmohan.com
+secretstest              1/1       Running   0          35d       10.36.0.2   node3.rmohan.com
+test-pod                 1/1       Running   3          35d       10.42.0.2   node2.rmohan.com
+[root@master ~]#
+
+
+[root@master ~]# kubectl uncordon master.rmohan.com
+node/master.rmohan.com uncordoned
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS    RESTARTS   AGE       IP          NODE
+multiple-container       2/2       Running   6          35d       10.42.0.1   node2.rmohan.com
+nginx-64f497f8fd-775w6   1/1       Running   0          10m       10.44.0.1   node1.rmohan.com
+nginx-64f497f8fd-bv5kt   1/1       Running   0          10m       10.36.0.3   node3.rmohan.com
+secretstest              1/1       Running   0          35d       10.36.0.2   node3.rmohan.com
+test-pod                 1/1       Running   3          35d       10.42.0.2   node2.rmohan.com
+[root@master ~]#
+
+
+Start Pod.
+[root@master ~]# kubectl run httpd --image=httpd
+deployment "httpd" created
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                     READY     STATUS    RESTARTS   AGE
+httpd-2047761252-mp52s   1/1       Running   0          14s
+
+Attach to Pod.
+[root@master ~]# kubectl attach httpd-2047761252-mp52s -i
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.17.0.2. Set the 'ServerName' directive globally to suppress this message
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.17.0.2. Set the 'ServerName' directive globally to suppress this message
+[Sat Jan 07 02:49:25.819545 2017] [mpm_event:notice] [pid 1:tid 139689717176192] AH00489: Apache/2.4.25 (Unix) configured -- resuming normal operations
+[Sat Jan 07 02:49:25.820892 2017] [core:notice] [pid 1:tid 139689717176192] AH00094: Command line: 'httpd -D FOREGROUND'
+
+
+###########################Kubernetes Pod Draining for Node Maintenance###########################

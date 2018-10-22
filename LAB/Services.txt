@@ -1,0 +1,116 @@
+Create an nginx Pod, and note that it has a container port specification:
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  selector:
+    matchLabels:
+      run: my-nginx
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+
+
+$ kubectl create -f ./run-my-nginx.yaml
+$ kubectl get pods -l run=my-nginx -o wide
+
+
+$ kubectl get pods -l run=my-nginx -o yaml | grep podIP
+    podIP: 10.244.3.4
+    podIP: 10.244.2.5
+	
+
+You can create a Service for your 2 nginx replicas
+	
+[root@master test]# cat nginxservice.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx
+  labels:
+    run: my-nginx
+spec:
+  type: LoadBalancer
+  externalIPs:
+    - 192.168.1.70
+    - 192.168.1.72
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    run: my-nginx
+
+	kubectl create -f nginxservice.yaml
+	
+$ kubectl get svc my-nginx
+
+
+kubectl describe svc my-nginx
+
+
+
+
+	
+
+
+[root@node3 ~]# cat service
+root@master~]# kubectl run nginx --image=nginx
+deployment.apps "nginx" created
+[root@master~]# kubectl get deployment
+NAME      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx     1         1         1            1           10s
+Go through the worker nodes and I found 1 instance of nginx running on k8s-wk2.
+
+Then create a service and expose port 80 on the master node's public ip
+
+[root@master~]#  kubectl expose deployment nginx --name=nginx-lb --external-ip=192.168.1.70 --port=80 --target-port=80 --type=LoadBalancer
+service "nginx-lb" exposed
+[root@master~]# kubectl get service
+NAME         TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes   ClusterIP      10.96.0.1       <none>        443/TCP        25m
+nginx-lb     LoadBalancer   10.103.218.95   192.168.1.70    80:32450/TCP   7s
+
+Scale out the deployment
+
+[root@master~]# kubectl scale deployment nginx --replicas=4
+deployment.extensions "nginx" scaled
+[root@master~]# kubectl get deployment
+NAME      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx     4         4         4            4           2m
+
+[root@master~]# kubectl get pods -o wide
+NAME                                READY     STATUS    RESTARTS   AGE       IP          NODE
+nginx-deployment-57664d6d66-9vs2h   1/1       Running   1          22m       10.44.0.3   k8s-wk1
+nginx-deployment-57664d6d66-bznch   1/1       Running   1          22m       10.44.0.4   k8s-wk1
+nginx-deployment-57664d6d66-m6b2h   1/1       Running   0          22m       10.36.0.1   k8s-wk2
+nginx-deployment-57664d6d66-xxs56   1/1       Running   0          22m       10.36.0.2   k8s-wk2
+
+
+See the above in action
+To quickly test the deployment, I go to my worker instances, locate the index.html file of the containers, and edit them. I've replaced the default landing page with text that can uniquely identify the containers. Then run a http GET on the load balancer IP and I see responses from different containers:
+
+[root@master~]# curl http://10.0.0.165
+wk2-inst2
+[root@master~]# curl http://10.0.0.165
+wk2-inst2
+[root@master~]# curl http://10.0.0.165
+wk1-inst2
+[root@master~]# curl http://10.0.0.165
+wk1-inst2
+[root@master~]# curl http://10.0.0.165
+wk1-inst1
+[root@master~]# curl http://10.0.0.165
+wk2-inst2

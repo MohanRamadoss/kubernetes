@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: training-daemonset
+  labels:
+    app: training
+spec:
+  template:
+    metadata:
+      labels:
+        app: logging-app
+    spec:
+      nodeSelector:
+        app: logging-node
+      containers:
+        - name: webserver
+          image: nginx
+          ports:
+          - containerPort: 80

@@ -1,4 +1,4 @@
-============================================================================================================
+﻿============================================================================================================
 Helm Package Manager
 
 https://www.digitalocean.com/community/tutorials/how-to-install-software-on-kubernetes-clusters-with-the-helm-package-manager
@@ -97,7 +97,6 @@ helm repo update
  helm ls
  kubectl get pods
  
- 
 //see results:
 kubectl get pods
 kubectl get deploy
@@ -107,4 +106,3 @@ delete
 
 helm delete my-release
 release "my-release" deleted
-

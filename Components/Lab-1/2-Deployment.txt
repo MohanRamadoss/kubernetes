@@ -1,0 +1,801 @@
+﻿A Kubernetes Pod is a group of one or more Containers, tied together for the purposes of administration and networking. 
+
+The Pod in this tutorial has only one Container. A Kubernetes Deployment checks on the health of our Pod and restarts the Pod's Container if it terminates.
+
+Deployments are the recommended way to manage the creation and scaling of Pods.
+
+Use the kubectl run command to create a Deployment that manages a Pod. The Pod runs a Container based on our hello-node:v1 Docker image:
+
+
+
+
+
+Deployment
+
+
+Deployment execution
+The command to execute Pod internally creates a Deployment object
+
+kubectl create deployment nginx --image=nginx:1.7.12
+
+Check the Deployment object created by the above command
+
+kubectl get deployments nginx
+
+
+How Deployment Works  Deployment 
+
+scales ReplicaSet when Deployment under ReplicaSet is Scaled
+
+kubectl scale deployments nginx --replicas=2
+kubectl get replicasets -o wide 
+
+By displaying the list of ReplicaSet it can be confirmed that it was scaled
+
+kubectl get replicasets  
+
+
+However, even if attempting to scale down ReplicaSet, scale down is not executed
+
+kubectl scale deployments nginx --replicas=1
+kubectl get replicasets -o wide 
+
+
+This is because the Deployment is a top-level object under ReplicaSet control
+
+Create Deployment
+Save the Deployment created earlier in yml file on disk
+
+
+kubectl get deployments nginx --export -o yaml > nginx-deployment.yml
+
+nginx-deployments.yml  Looking at the contents of the ReplicaSet object is similar in content, but has a Strategy object that manages rollout in addition to managing Pod
+
+
+
+Managing Deployment
+
+Scale through the configuration file of the Deployment object as above
+
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 3
+  revisionHistoryLimit: 10
+
+  
+
+spec:
+  replicas: 3
+kubectl apply -f nginx-deployment.yml
+
+
+
+
+
+
+Confirm that you have scaled
+
+kubectl get deployments nginx
+Update the configuration file to update the container image
+
+
+  containers:
+  - image: nginx:1.9.10
+    imagePullPolicy: Always
+	
+kubectl apply -f nginx-deployment.yml
+
+When updating Deployment, a new version rollout will be executed, so see it
+
+
+kubectl rollout status deployments nginx
+
+Once rolled out old ReplicaSet and new ReplicaSet will be placed under control
+
+
+
+kubectl get replicasets -o wide
+
+To stop rolling out in the middle, execute the following command
+
+
+kubectl rollout pause deployments nginx
+
+If you want to restart rollout while rollout is stopped, execute the following command
+
+
+Rollout history
+The history of rollout can be checked with the following command
+
+
+kubectl rollout resume deployments nginx
+
+kubectl rollout history deployments nginx
+
+
+
+To see the details of the specified revision, use the following command
+kubectl rollout history deployment nginx --revision=2
+
+If you want to roll back rollout
+
+kubectl rollout undo deployments nginx
+
+
+Looking at the replica number of ReplicaSet, it can be confirmed that rollout and rollback are executed properly
+
+
+
+kubectl get replicasets -o wide
+
+If you want to roll back to a specific revision
+
+kubectl rollout undo deployments nginx --to-revision=3
+
+
+Deleting Deployment
+
+kubectl delete deployments nginx
+kubectl delete -f nginx-deployments.yml
+
+
+
+############################## kubectl edit (change definition information) / kubectl apply (change definition information)
+
+kubectl edit (change definition information) / kubectl apply (change definition information)
+Both edit and apply are used to modify resource definition information. The difference is as follows. 
+- edit is used to change resource definition information using editor (vi etc.). 
+- apply is used to change resource definition information from file or standard input.
+
+Start Pod. Use image version 1.7.1
+
+  kubectl get pods
+  kubectl create deployment nginx --image=nginx
+  kubectl delete deployment nginx
+  kubectl create deployment nginx --image=nginx:1.7.1
+  kubectl get pod
+  kubectl edit deployment nginx
+  kubectl describe pod nginx-756c8f9885-z9fws |grep "Image:"
+  kubectl describe pod nginx-756c8f9885-z9fws
+  kubectl describe pod  nginx-756c8f9885-z9fws
+
+  
+[root@master ~]# kubectl run nginx --image=nginx:1.7.1
+deployment "nginx" created
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                     READY     STATUS    RESTARTS   AGE
+nginx-4193804003-rqoun   1/1       Running   0          7s
+
+Check the version number of the image. It is found to be 1.7.1.
+[root@master ~]# kubectl describe pod nginx-4193804003-rqoun|grep "Image:"
+    Image:              nginx:1.7.1
+
+Change the version number of the image from 1.7.1 to 1.9.1.
+[root@master ~]# kubectl edit deployment nginx
+
+      - image: nginx:1.7.1
+             ↓
+      - image: nginx:1.9.1
+
+deployment "nginx" edited
+
+Check the state of Pod. Based on the 1.9.1 version image, you can see that Pod is running.
+[root@master ~]# kubectl get pod
+NAME                   READY     STATUS    RESTARTS   AGE
+nginx-45047525-8tklr   1/1       Running   0          2m
+
+[root@master ~]# kubectl describe pod nginx-45047525-8tklr |grep "Image:"
+    Image:              nginx:1.9.1
+
+Also check with the docker command. The version number of the image has been updated to 1.9.1.
+[root@master ~]# docker ps
+CONTAINER ID     IMAGE          COMMAND                  CREATED              STATUS              PORTS        NAMES
+007830b209b4     nginx:1.9.1    "nginx -g 'daemon off"   About a minute ago   Up About a minute      
+
+
+
+
+
+
+	
+===========================================================================================	
+kubectl describe
+	
+==========================================================================================	
+
+
+[root@master ~]# kubectl get pod
+NAME                      READY     STATUS    RESTARTS   AGE
+nginx-d75989cbf-jg6fv     1/1       Running   0          4m
+nginx1-54bdd6bcc9-ts5cr   1/1       Running   0          3m
+[root@master ~]#
+
+
+Get the status of Pod. More detailed information can be obtained than get.
+
+
+kubectl describe pod nginx-d75989cbf-jg6fv
+
+
+
+[root@master ~]# kubectl describe pod nginx-d75989cbf-jg6fv
+Name:               nginx-d75989cbf-jg6fv
+Namespace:          default
+Priority:           0
+PriorityClassName:  <none>
+Node:               node1.rmohan.com/192.168.43.21
+Start Time:         Tue, 07 Aug 2018 15:25:07 +0800
+Labels:             os=linux
+                    pod-template-hash=831545769
+Annotations:        <none>
+Status:             Running
+IP:                 10.44.0.1
+Controlled By:      ReplicaSet/nginx-d75989cbf
+Containers:
+  nginx:
+    Container ID:   docker://f047eccb6d12484fae097ad6cac17020de9153ec4f27c538e3c7e53103211224
+    Image:          nginx
+    Image ID:       docker-pullable://docker.io/nginx@sha256:d85914d547a6c92faa39ce7058bd7529baacab7e0cd4255442b04577c4d1f424
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Tue, 07 Aug 2018 15:25:16 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-s7gk4 (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-s7gk4:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-s7gk4
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age   From                       Message
+  ----    ------     ----  ----                       -------
+  Normal  Scheduled  4m    default-scheduler          Successfully assigned default/nginx-d75989cbf-jg6fv to node1.rmohan.com
+  Normal  Pulling    4m    kubelet, node1.rmohan.com  pulling image "nginx"
+  Normal  Pulled     4m    kubelet, node1.rmohan.com  Successfully pulled image "nginx"
+  Normal  Created    4m    kubelet, node1.rmohan.com  Created container
+  Normal  Started    4m    kubelet, node1.rmohan.com  Started container
+
+  
+  
+To clean the 
+ 
+kubectl delete deployments nginx
+
+
+  
+  
+======================================================
+  kubectl create
+==================================================
+ 
+ The contents of the Deployment template file are as follows
+ 
+ 
+cat <<EOF> nginx-deployment.yaml
+> apiVersion: extensions/v1beta1
+> kind: Deployment
+> metadata:
+>   name: nginx-deployment
+> spec:
+>   replicas: 1
+>   template:
+>     metadata:
+>       labels:
+>         app: nginx
+>     spec:
+>       containers:
+>       - name: nginx
+>         image: nginx:1.7.9
+>         ports:
+>         - containerPort: 80
+> EOF
+
+
+
+
+Create a Deployment with the template file name as an argument.
+
+[root@master ~]#  kubectl create -f nginx-deployment.yaml
+deployment.extensions/nginx-deployment created
+[root@master ~]#
+
+Check the state of the created Deployment. You can see that the name of Deployment is "nginx-deployment".
+
+
+[root@master ~]#  kubectl get deployment
+NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+nginx              1         1         1            1           9m
+nginx-deployment   1         1         1            1           53s
+nginx1             1         1         1            1           8m
+[root@master ~]#
+
+Check the state of Pod.
+[root@master ~]#  kubectl get pod
+NAME                                READY     STATUS    RESTARTS   AGE
+nginx-d75989cbf-jg6fv               1/1       Running   0          9m
+nginx-deployment-67594d6bf6-6rhqz   1/1       Running   0          1m
+nginx1-54bdd6bcc9-ts5cr             1/1       Running   0          8m
+[root@master ~]#
+
+Delete Deployment.
+
+[root@master ~]# kubectl delete deployment nginx-deployment
+deployment.extensions "nginx-deployment" deleted
+[root@master ~]#
+
+
+[root@master ~]#  kubectl get pod
+NAME                                READY     STATUS        RESTARTS   AGE
+nginx-d75989cbf-jg6fv               1/1       Running       0          10m
+nginx-deployment-67594d6bf6-6rhqz   0/1       Terminating   0          1m
+nginx1-54bdd6bcc9-ts5cr             1/1       Running       0          9m
+
+
+
+
+
+
+
+
+##############kubectl replace (Replace resources, once deleting resources and recreating)
+
+Check the version number of the image. Version number is 1.7.1
+
+
+
+[root@master ~]# cat nginx-deployment.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80
+
+		Start Pod.
+[root@master ~]# kubectl create -f nginx-deployment.yaml
+deployment "nginx-deployment" created
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                                READY     STATUS        RESTARTS   AGE
+nginx-deployment-1406762891-5typw   1/1       Running       0          23s
+
+Check the image version number of the Pod that started up.
+
+[root@master ~]# kubectl get pod nginx-deployment-1406762891-5typw -o yaml|grep "image:"
+  - image: nginx:1.7.1
+    image: nginx:1.7.1
+
+Change the image version number (1.7.1 -> 1.9.1).
+
+
+[root@master ~]# vi nginx-deployment.yaml
+[root@master ~]# cat nginx-deployment.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.9.1
+        ports:
+        - containerPort: 80
+		
+
+
+[root@master ~]# kubectl replace -f nginx-deployment.yaml
+deployment "nginx-deployment" replaced
+
+Check the state of Pod. I can see that the name of Pod has changed.
+
+[root@master ~]# kubectl get pod
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-6987cdb55b-94l6l   1/1     Running   0          2s
+
+
+Check the image version number of the Pod that started up.
+
+[root@master ~]#  kubectl get pod nginx-deployment-6987cdb55b-94l6l -o yaml|grep "image:"
+  - image: nginx:1.9.1
+    image: docker.io/nginx:1.9.1
+[root@master ~]#
+
+
+Also check with the Docker command. It is understood that the version number of the image is 1.9.1.
+[root@master ~]# docker ps
+CONTAINER ID   IMAGE        COMMAND                  CREATED           STATUS           PORTS      NAMES
+d6116aeec2e4   nginx:1.9.1  "nginx -g 'daemon off"   57 seconds ago    Up 55 seconds               k8s_nginx.f50b001f_nginx-deployment-1564180365-qplk2_default_7b606b07-a5a9-11e6-991f-000c291946c5_a8b717af3bde29fcacea
+
+
+
+
+
+#############kubectl rolling-update (dynamically changing resources)
+
+
+
+Check the content of the template. Image version number is 1.7.1
+[root@master ~]# cat nginx-rc.yaml
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.7.1
+        ports:
+        - containerPort: 80
+
+Start Pod.
+[root@master ~]# kubectl create -f nginx-rc.yaml
+replicationcontroller "nginx" created
+
+Check the state of Pod.
+
+[root@master ~]# kubectl get pod
+NAME          READY   STATUS    RESTARTS   AGE
+nginx-bd87r   1/1     Running   0          11s
+
+Check the version number of the image.
+
+[root@master ~]# kubectl get pod nginx-bd87r -o yaml|grep "image:"
+  - image: nginx:1.7.1
+    image: docker.io/nginx:1.7.1
+
+[root@master ~]# docker ps
+CONTAINER ID    IMAGE          COMMAND      CREATED              STATUS              PORTS    NAMES
+6381c2a09d64    nginx:1.7.1    "nginx"      About a minute ago   Up About a minute            k8s_nginx.eff1001d_nginx-du0qx_default_b39e9ff4-a5ab-11e6-991f-000c291946c5_b39a845b
+
+Perform rolling update. Update the version number of the image from 1.7.1 to 1.9.1.
+
+[root@master ~]# kubectl rolling-update nginx --image=nginx:1.9.1
+Command "rolling-update" is deprecated, use "rollout" instead
+Created nginx-86575537a3a45a2d3cddf690f4565f19
+Scaling up nginx-86575537a3a45a2d3cddf690f4565f19 from 0 to 1, scaling down nginx from 1 to 0 (keep 1 pods available, don't exceed 2 pods)
+Scaling nginx-86575537a3a45a2d3cddf690f4565f19 up to 1
+
+
+Scaling nginx down to 0
+Update succeeded. Deleting old controller: nginx
+Renaming nginx-86575537a3a45a2d3cddf690f4565f19 to nginx
+replicationcontroller/nginx rolling updated
+
+
+
+When "wait for a while", check the status of Pod on another terminal.
+It is understood that two before Pod and a new Pod are activated.
+[root@master ~]# kubectl get pod
+NAME                                           READY     STATUS    RESTARTS   AGE
+nginx-86575537a3a45a2d3cddf690f4565f19-vnwkl   1/1       Running   0          9s
+nginx-bd87r                                    1/1       Running   0          11m
+
+After rolling-update is finished, check the state of Pod. You can see that only the newly started Pod is running.
+[root@master ~]# kubectl get pod
+NAME                                           READY   STATUS    RESTARTS   AGE
+nginx-86575537a3a45a2d3cddf690f4565f19-vnwkl   1/1     Running   0          13m
+[root@master ~]#
+
+
+
+[root@master ~]# kubectl get pod  nginx-634b1777dadd99cd2b89bb4c4b8c3eaa-r4rnf -o yaml|grep "image:"
+  - image: nginx:1.9.1
+    image: docker.io/nginx:1.9.1
+[root@master ~]#
+
+
+
+
+
+##########################################
+kubectl rollout
+kubectl rollout history (Display update history)
+kubectl rollout undo (Cancel the operation and return to the past state)
+
+ 
+ 
+ 
+ Start Pod. To keep the history, attach the - record option.
+[root@master ~]# kubectl run nginx --image=nginx:1.7.1 --record
+deployment "nginx" created
+
+Check the state of Pod.
+[root@master secrets]# kubectl get pods
+NAME                     READY   STATUS              RESTARTS   AGE
+multiple-container       2/2     Running             0          50m
+nginx-5688f79479-vph76   0/1     ContainerCreating   0          13s
+secretstest              1/1     Running             0          75m
+test-pod                 1/1     Running             1          64m
+
+
+[root@master secrets]# kubectl rollout history deployment/nginx
+deployment.extensions/nginx
+REVISION  CHANGE-CAUSE
+1         kubectl run nginx --image=nginx:1.7.1 --record=true
+
+[root@master secrets]#
+
+
+
+hange the image version number (1.7.1 -> 1.9.1). Since the editor (vi etc.) is activated, change the version number.
+[root@master ~]# kubectl edit deployment nginx
+
+      - image: nginx:1.7.1
+           Change
+      - image: nginx:1.9.1
+
+deployment "nginx" edited
+
+Confirm history.
+
+
+  
+  
+[root@master secrets]#  kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+multiple-container       2/2     Running   0          52m
+nginx-55dcc6dd69-gd8qt   1/1     Running   0          68s
+secretstest              1/1     Running   0          78m
+test-pod                 1/1     Running   1          67m
+
+  
+  
+  
+[root@master secrets]# kubectl describe pod nginx-55dcc6dd69-gd8qt |grep "Image:"
+    Image:          nginx:1.9.1
+[root@master secrets]#
+
+  [root@master secrets]# kubectl rollout history deployment nginx
+deployment.extensions/nginx
+REVISION  CHANGE-CAUSE
+1         kubectl run nginx --image=nginx:1.7.1 --record=true
+2         kubectl run nginx --image=nginx:1.7.1 --record=true
+
+[root@master secrets]#
+
+
+Return to REVISION 1 state.
+[root@master secrets]# kubectl rollout undo deployment nginx --to-revision=1
+deployment.extensions/nginx
+
+
+[root@master secrets]# kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+multiple-container       2/2     Running   0          55m
+nginx-5688f79479-wgflc   1/1     Running   0          19s
+secretstest              1/1     Running   0          80m
+test-pod                 1/1     Running   1          70m
+
+
+
+It is understood that the version number of the image has changed from 1.9.1 to 1.7.1.
+
+[root@master secrets]# kubectl describe pod nginx-5688f79479-wgflc |grep "Image:"
+    Image:          nginx:1.7.1
+[root@master secrets]#
+
+
+
+
+#########################################
+
+3.13.3 kubectl rollout pause
+3.13.4 kubectl rollout resume
+3.14 kubectl label (labeling, deleting, overwriting on Pod)
+
+
+
+[root@master secrets]# kubectl run nginx --image=nginx
+kubectl run --generator=deployment/apps.v1beta1 is DEPRECATED and will be removed in a future version. Use kubectl create instead.
+deployment.apps/nginx created
+
+  
+  
+  
+ Check the label of Pod.
+[root@master ~]# kubectl get pod --show-labels
+
+
+
+[root@master secrets]# kubectl get pod --show-labels
+NAME                    READY   STATUS    RESTARTS   AGE   LABELS
+multiple-container      2/2     Running   2          64m   <none>
+nginx-dbddb74b8-tbxcl   1/1     Running   0          34s   pod-template-hash=dbddb74b8,run=nginx
+secretstest             1/1     Running   0          89m   name=secretstest1
+test-pod                1/1     Running   1          78m   <none>
+[root@master secrets]#
+
+
+
+
+
+
+############################## kubectl edit (change definition information) / kubectl apply (change definition information)
+
+kubectl edit (change definition information) / kubectl apply (change definition information)
+Both edit and apply are used to modify resource definition information. The difference is as follows. 
+- edit is used to change resource definition information using editor (vi etc.). 
+- apply is used to change resource definition information from file or standard input.
+
+
+  
+[root@master ~]# kubectl run nginx --image=nginx:1.7.1
+deployment "nginx" created
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                     READY     STATUS    RESTARTS   AGE
+nginx-4193804003-rqoun   1/1       Running   0          7s
+
+Check the version number of the image. It is found to be 1.7.1.
+[root@master ~]# kubectl describe pod nginx-4193804003-rqoun|grep "Image:"
+    Image:              nginx:1.7.1
+
+Change the version number of the image from 1.7.1 to 1.9.1.
+[root@master ~]# kubectl edit deployment nginx
+
+      - image: nginx:1.7.1
+             ↓
+      - image: nginx:1.9.1
+
+deployment "nginx" edited
+
+Check the state of Pod. Based on the 1.9.1 version image, you can see that Pod is running.
+[root@master ~]# kubectl get pod
+NAME                   READY     STATUS    RESTARTS   AGE
+nginx-45047525-8tklr   1/1       Running   0          2m
+
+[root@master ~]# kubectl describe pod nginx-45047525-8tklr |grep "Image:"
+    Image:              nginx:1.9.1
+
+Also check with the docker command. The version number of the image has been updated to 1.9.1.
+[root@master ~]# docker ps
+CONTAINER ID     IMAGE          COMMAND                  CREATED              STATUS              PORTS        NAMES
+007830b209b4     nginx:1.9.1    "nginx -g 'daemon off"   About a minute ago   Up About a minute      
+
+
+
+
+####################
+kubectl logs (Pod displays messages output to standard output)
+
+
+
+Start Pod.
+
+[root@master ~]# kubectl create deployment httpd --image=httpd
+deployment.apps/httpd created
+
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+httpd-5bf9cbc4cd-l2mv4   1/1     Running   0          13s
+nginx-x7vvt              1/1     Running   0          5m29s
+
+
+Check the status of Deployment.
+
+[root@master ~]# kubectl get deployment
+NAME    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+httpd   1         1         1            1           47s
+
+
+Create a Service. Map host's port number 8888 to container port number 80.
+[root@master ~]# kubectl expose deployment httpd --port=8888 --target-port=80
+service/httpd exposed
+
+Create a Service. - port is the port number of the host, - target - port is the port number of Pod.
+[root@master ~]# kubectl expose deployment httpd --port=8888 --target-port=80
+service "httpd" exposed
+
+Check Service and endpoint information. You can see the relation of host side (10.254.92.77: 8888) <-> Pod (10.1.72.2: 80).
+[root@master ~]# kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+httpd        ClusterIP   10.101.100.86   <none>        8888/TCP   37s
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP    34h
+[root@master ~]# curl 10.101.100.86
+
+[root@master ~]# curl 10.101.100.86:8888
+<html><body><h1>It works!</h1></body></html>
+[root@master ~]# curl 10.101.100.86:8888
+<html><body><h1>It works!</h1></body></html>
+
+
+[root@master ~]# kubectl get endpoints
+NAME         ENDPOINTS            AGE
+httpd        10.1.72.2:80         15m
+
+
+Access Pod (httpd).
+[root@master ~]# curl http://10.110.105.91:8888
+<html><body><h1>It works!</h1></body></html>
+
+A log with HTTP access is output.
+[root@master ~]# kubectl logs httpd-2047761252-vrz7s
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.1.72.2. Set the 'ServerName' directive globally to suppress this message
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.1.72.2. Set the 'ServerName' directive globally to suppress this message
+[Sun Nov 06 12:06:42.420907 2016] [mpm_event:notice] [pid 1:tid 140692115355520] AH00489: Apache/2.4.23 (Unix) configured -- resuming normal operations
+[Sun Nov 06 12:06:42.446383 2016] [core:notice] [pid 1:tid 140692115355520] AH00094: Command line: 'httpd -D FOREGROUND'
+192.168.0.100 - - [06/Nov/2016:12:07:33 +0000] "GET / HTTP/1.1" 200 45
+
+HTTP access once again.
+[root@master ~]# curl http://10.254.92.77:8888
+<html><body><h1>It works!</h1></body></html>
+
+It is understood that the log of the second HTTP access is output.
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-l2mv4
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.42.0.1. Set the 'ServerName' directive globally to suppress this message
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.42.0.1. Set the 'ServerName' directive globally to suppress this message
+[Wed Oct 10 04:24:28.861087 2018] [mpm_event:notice] [pid 1:tid 140511875295104] AH00489: Apache/2.4.35 (Unix) configured -- resuming normal operations
+[Wed Oct 10 04:24:28.861280 2018] [core:notice] [pid 1:tid 140511875295104] AH00094: Command line: 'httpd -D FOREGROUND'
+10.32.0.1 - - [10/Oct/2018:04:29:32 +0000] "GET / HTTP/1.1" 200 45
+10.32.0.1 - - [10/Oct/2018:04:29:34 +0000] "GET / HTTP/1.1" 200 45
+
+
+
+
+Only log the last two lines. Add --tail=2 option.
+
+
+
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-hmms2 --tail=3
+[Sat Oct 20 11:31:07.217532 2018] [core:notice] [pid 1:tid 140383346812096] AH00094: Command line: 'httpd -D FOREGROUND'
+10.47.0.0 - - [20/Oct/2018:11:31:55 +0000] "GET / HTTP/1.1" 200 45
+10.47.0.0 - - [20/Oct/2018:11:31:56 +0000] "GET / HTTP/1.1" 200 45
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-hmms2 --tail=2
+10.47.0.0 - - [20/Oct/2018:11:31:55 +0000] "GET / HTTP/1.1" 200 45
+10.47.0.0 - - [20/Oct/2018:11:31:56 +0000] "GET / HTTP/1.1" 200 45
+[root@master ~]#
+
+
+Option usage example	meaning
+--tail=2	Output only the last two lines
+--since=10s	Output the log for the last 10 seconds
+--since=1m	Output the log of the last minute
+--since=2H	Output logs of the last 2 hours
+
+
+

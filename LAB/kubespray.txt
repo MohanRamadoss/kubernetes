@@ -1,0 +1,246 @@
+
+Install Kubernetes Cluster with Ansible based tool Kubespray 
+
+
+Kubernetes Master and Slave
+
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.1.70 master.rmohan.com   master1
+192.168.1.71 master2.rmohan.com  master2
+192.168.1.75 master3.rmohan.com  master3
+192.168.1.72 node1.rmohan.com  node1
+192.168.1.73 node2.rmohan.com  node2
+192.168.1.74 node3.rmohan.com  node3
+192.168.1.79 deploymemt.rmohan.com deploymemt -Ansible 
+
+
+
+Ansible Deployment Node  deploymemt server 
+
+yum install -y epel-release
+yum install -y ansible git gcc python-pip python-devel python-netaddr libffi-devel openssl-devel
+
+
+
+All the kubernetes server 
+yum install -y  gcc python-pip python-devel python-netaddr libffi-devel openssl-devel
+
+
+ Deploymemt server 
+pip install pip --upgrade
+pip install jinja2
+
+
+
+
+sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+ssh-keygen
+
+NODES=(192.168.1.70 192.168.1.71 192.168.1.72 192.168.1.73 192.168.1.74 192.168.1.75 192.168.1.76)
+for NODE in ${NODES[@]}
+do
+  ssh-copy-id -i ~/.ssh/id_rsa.pub root@$NODE
+done
+
+
+
+
+cat <<EOF > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+
+[root@master ~]# sysctl --system
+
+
+yum install -y yum-utils device-mapper-persistent-data lvm2
+
+
+5. Git clone the Kubespray repository on one of the master servers:
+
+git clone https://github.com/kubernetes-incubator/kubespray.git
+
+
+6. Go to the ‘Kubespray’ directory and install all dependency packages
+
+    (Install dependencies from requirements.txt)
+
+cd kubespray
+pip install --upgrade pip
+
+pip install -r requirements.txt
+	
+	
+9.  Review and change parameters under ``inventory/mycluster/group_vars``
+
+    vi inventory/mycluster/group_vars/k8s-cluster/k8s-cluster.yml
+    vi inventory/mycluster/group_vars/all/all.yml
+
+Some changes you may want to look for are:
+
+-  Changingthe network as per your liking in “inventory/mycluster/group_vars/k8s-cluster.yml”
+
+Choose network plugin (cilium, calico, contiv, weave or flannel)
+
+Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
+
+kube_network_plugin: weave
+
+
+k8s-cluster.yml
+
+kubelet_max_pods: 100
+cluster_name: prod
+helm_enabled: true
+
+- In “inventory/mycluster/group_vars/all/all.yml”  uncomment the following line to enable metrics to fetch the cluster resource utilization data without this HPAs will not work (for ‘kubectl top nodes’ & ‘kubectl top pods’ commands to work)
+
+ The read-only port for the Kubelet to serve on with no authentication/authorization. Uncomment to enable.
+
+kube_read_only_port: 10255
+
+
+Now we are all set for the big, red switch:
+
+10.   Deploy Kubespray with Ansible Playbook
+
+ ansible-playbook -i inventory/mycluster/hosts.ini cluster.yml
+
+ansible-playbook  -u root  -i inventory/mycluster/hosts.ini --flush-cache cluster.yml -vv 
+
+
+/root/kubespray/inventory
+
+
+cp -pR sample mycluster
+
+declare -a IPS=(192.168.1.70 192.168.1.71 192.168.1.72 192.168.1.73 192.168.1.74)
+CONFIG_FILE=inventory/mycluster/hosts.ini python36 contrib/inventory_builder/inventory.py ${IPS[@]}
+
+ansible all -i  hosts.ini -m shell -a  'sudo sysctl -w net.ipv4.ip_forward=1'
+ansible all -i hosts.ini -m shell -a 'systemctl stop firewalld &&  systemctl disable firewalld && systemctl mask firewalld  &&   yum remove -y firewalld'
+
+
+vi hosts.ini
+
+[all]
+master1  ansible_ssh_host=192.168.1.70 
+master2  ansible_ssh_host=192.168.1.71
+master3  ansible_ssh_host=192.168.1.75
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+[kube-master]
+master1
+master2
+master3
+
+[etcd]
+master1
+master2
+master3
+node1
+node2
+node3
+
+[kube-node]
+master1
+master2
+master3
+node1
+node2
+node3
+
+
+[k8s-cluster:children]
+master1
+master2
+node1 
+
+[calico-rr]
+
+[vault]
+node1
+node2
+node3
+
+
+[all:vars]
+ansible_ssh_port=22
+ansible_ssh_user=root
+ansible_ssh_pass=test123
+ansible_sudo_pass=test123
+
+
+
+
+Additional steps might be needed while working with K8s cluster
+
+1.  Adding a new node (node3 - 192.168.1.74) to a cluster: If you wish to add a new node server into the cluster, perform following steps:
+
+-  Add the server node-3 to “inventory/mycluster/hosts.ini” file
+
+    In “[all]” section:
+
+[all]
+master1   ansible_ssh_host=192.168.1.70 
+master2  ansible_ssh_host=192.168.1.71
+master3  ansible_ssh_host=192.168.1.75
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+In “[kube-node]” section:  (It can be kept along with other 5 nodes or as a single line also, won’t matter)
+
+[kube-node]
+node1
+node2
+node3
+node4
+node5 
+OR
+
+[kube-node]
+node3
+Now run the following command to scale your cluster:
+
+ansible-playbook -i inventory/mycluster/hosts.ini scale.yml
+
+
+2.  Removing a new node (node3 - 192.168.1.74) from cluster:
+
+-  Keep the server to “inventory/mycluster/hosts.ini” file
+
+    In “[all]” section:
+
+    
+[all]
+master   ansible_ssh_host=192.168.1.70 
+master1  ansible_ssh_host=192.168.1.71
+node1    ansible_ssh_host=192.168.1.72 
+node2    ansible_ssh_host=192.168.1.73
+node3    ansible_ssh_host=192.168.1.74 
+
+
+
+In the “[kube-node]” section keep ONLY the node server which needs to be removed from cluster. So in this example, we will keep only “node3” mentioned.  (If any other nodes are kept in here, they will also be removed from the cluster)
+
+[kube-node]
+node3
+
+Now run the following command to scale your cluster:
+
+ansible-playbook -i inventory/mycluster/hosts.ini remove-node.yml
+
+3. Reset the entire cluster for fresh installation:
+
+Keep the “hosts.ini” updated properly with all servers mentioned in the correct sections, and run   the following command:
+
+ ansible-playbook -i inventory/mycluster/hosts.ini reset.yml

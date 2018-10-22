@@ -1,0 +1,110 @@
+============================================================================================================
+Helm Package Manager
+
+https://www.digitalocean.com/community/tutorials/how-to-install-software-on-kubernetes-clusters-with-the-helm-package-manager
+
+https://linuxhint.com/getting-started-kubernetes-helm-charts/
+
+https://github.com/ContainerSolutions/adidas/blob/1544187f0ef67f9199bff4345186f6276230abd1/helm-essentials/03_lab.md
+
+
+https://github.com/d-james-projects/helm/blob/cb1ffad725cbb8d5f33ad43320d3602b8d436a7a/backup-prometheus/helm_notes.txt
+
+######################################################
+
+Step 1 — Installing Helm
+
+First we'll install the helm command-line utility on our local machine. Helm provides a script that handles the installation process on MacOS, Windows, or Linux.
+
+Change to a writable directory and download the script from Helm's GitHub repository:
+
+    cd /tmp
+    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > install-helm.sh
+
+Make the script executable with chmod:
+
+    chmod u+x install-helm.sh
+
+At this point you can use your favorite text editor to open the script and inspect it to make sure it’s safe. When you are satisfied, run it:
+
+    ./install-helm.sh
+
+You may be prompted for your password. Provide it and press ENTER.
+
+Output
+helm installed into /usr/local/bin/helm
+Run 'helm init' to configure helm.
+
+Next we will finish the installation by installing some Helm components on our cluster.
+Step 2 — Installing Tiller
+
+Tiller is a companion to the helm command that runs on your cluster, receiving commands from helm and communicating directly with the Kubernetes API to do the actual work of creating and deleting resources. To give Tiller the permissions it needs to run on the cluster, we are going to make a Kubernetes serviceaccount resource.
+
+Note: We will bind this serviceaccount to the cluster-admin cluster role. This will give the tiller service superuser access to the cluster and allow it to install all resource types in all namespaces. This is fine for exploring Helm, but you may want a more locked-down configuration for a production Kubernetes cluster.
+
+Please refer to the official Helm RBAC documentation for more information on setting up different RBAC scenarios for Tiller.
+
+Create the tiller serviceaccount:
+
+    kubectl -n kube-system create serviceaccount tiller
+
+Next, bind the tiller serviceaccount to the cluster-admin role:
+
+    kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+
+Now we can run helm init, which installs Tiller on our cluster, along with some local housekeeping tasks such as downloading the stable repo details:
+
+    helm init --service-account tiller
+
+Output
+. . .
+
+Tiller (the Helm server-side component) has been installed into your Kubernetes Cluster.
+
+Please note: by default, Tiller is deployed with an insecure 'allow unauthenticated users' policy.
+For more information on securing your installation see: https://docs.helm.sh/using_helm/#securing-your-helm-installation
+Happy Helming!
+
+To verify that Tiller is running, list the pods in thekube-system namespace:
+
+    kubectl get pods --namespace kube-system
+
+Output
+NAME                                    READY     STATUS    RESTARTS   AGE
+. . .
+kube-dns-64f766c69c-rm9tz               3/3       Running   0          22m
+kube-proxy-worker-5884                  1/1       Running   1          21m
+kube-proxy-worker-5885                  1/1       Running   1          21m
+kubernetes-dashboard-7dd4fc69c8-c4gwk   1/1       Running   0          22m
+tiller-deploy-5c688d5f9b-lccsk          1/1       Running   0          40s
+
+The Tiller pod name begins with the prefix tiller-deploy-.
+
+Now that we've installed both Helm components, we're ready to use helm to install our first application.
+
+
+
+
+helm init
+helm repo update
+//inspect chart/configuration
+ helm inspect stable/redis
+ helm install stable/redis
+ helm ls
+ helm install --name my-release stable/redis
+ 
+ helm ls //see the helm installations  
+ helm ls
+ kubectl get pods
+ 
+ 
+//see results:
+kubectl get pods
+kubectl get deploy
+kubectl get svc
+
+delete 
+
+helm delete my-release
+release "my-release" deleted
+

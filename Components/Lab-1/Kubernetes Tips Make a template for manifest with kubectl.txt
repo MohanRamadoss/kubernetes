@@ -1,0 +1,54 @@
+#############################################
+Kubernetes Tips: Make a template for manifest with kubectl
+
+A template command for each resource
+
+Deployment
+
+kubectl run mydeploy --image nginx -o yaml --dry-run
+
+Pod
+# - restart = Never puts it to Pod 
+
+kubectl run mypod --restart=Never --image nginx -o yaml --dry-run
+
+
+Job
+
+# # --restart = Become a Job with 
+kubectl run myjob --restart=OnFailure --image ubuntu -o yaml --dry-run --echo hello
+
+CronJob
+
+# And put the --schedule become CronJob 
+
+kubectl run mycron --schedule "1 * * * *" --image nginx -o yaml --dry-run 
+ 
+Service
+
+kubectl create svc clusterip myapp --tcp 80 -o yaml --dry-run
+
+ConfigMap
+kubectl create cm mycm --from-literal mykey=myval -o yaml --dry-run
+
+#If you specify a file with --from-file it will indent properly
+
+kubectl create cm mycm --from-file myfile.yaml -o yaml --dry-run
+Secret
+
+## Values ??are base64 encoded, so please edit it. 
+kubectl create secret generic mysecret --from-literal mykey=myval -o yaml --dry-run
+
+
+ServiceAccount
+kubectl create serviceaccount mysc -o yaml --dry-run
+
+ClusterRoleBinding
+kubectl create clusterrolebinding myclusterrolebinding --clusterrole=edit --serviceaccount default:mysc -o yaml --dry-run
+
+RoleBinding
+kubectl create rolebinding cluster-admin-binding --clusterrole=edit --serviceaccount default:mysc -o yaml --dry-run
+
+PodDisruptionBudget
+kubectl create pdb my-pdb --selector=app=nginx --min-available=1 -o yaml --dry-run
+

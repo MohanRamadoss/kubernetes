@@ -1,0 +1,83 @@
+
+#This is exec-liveness.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: liveness-exec
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - echo ok > /tmp/health; sleep 10; rm -rf /tmp/health; sleep 600
+    image: gcr.io/google_containers/busybox
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/health
+      initialDelaySeconds: 15
+      timeoutSeconds: 1
+    name: liveness-exec
+
+##And below is http-liveness.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: liveness-http
+spec:
+  containers:
+  - args:
+    - /server
+    image: gcr.io/google_containers/liveness
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+        httpHeaders:
+          - name: X-Custom-Header
+            value: Awesome
+      initialDelaySeconds: 15
+      timeoutSeconds: 1
+    name: liveness-http
+
+Utilise those file to check the output.
+
+$ kubectl create -f exec-liveness.yaml
+$ kubectl create -f http-liveness.yaml
+
+##Get the pod enlisting
+
+
+$ kubectl get pods
+NAME                                           READY     STATUS       RESTARTS   AGE
+liveness-exec                                  1/1       Running      0          13s
+liveness-http                                  1/1       Running      0          13s
+
+##Check for restart count
+
+
+$ kubectl get pods
+NAME                                           READY     STATUS       RESTARTS   AGE
+[...]
+liveness-exec                                  1/1       Running      1          36s
+liveness-http                                  1/1       Running      1          36s
+
+##Described all
+
+
+$ kubectl describe pods liveness-exec
+
+
+
+[root@master ~]#  kubectl get pods -o wide --watch
+NAME            READY   STATUS             RESTARTS   AGE     IP          NODE               NOMINATED NODE
+liveness-exec   1/1     Running            3          4m22s   10.38.0.4   node1.rmohan.com   <none>
+liveness-http   0/1     CrashLoopBackOff   5          4m15s   10.44.0.3   node3.rmohan.com   <none>
+nginx-jw68v     1/1     Running            0          3m51s   10.40.0.6   node2.rmohan.com   <none>
