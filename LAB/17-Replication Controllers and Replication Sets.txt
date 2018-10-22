@@ -1,9 +1,9 @@
-###########Replication_Controller#################
++###########Replication_Controller#################
 
 
 Demo -1 
 
-root@node3 ~]# cat replication
+root@node3 ~]# cat replication.yaml
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -24,11 +24,15 @@ spec:
         ports:
         - containerPort: 80
 
-kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/replication.yaml
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/replication/replication.yaml
 
 replicationcontroller/nginx created
 
 Check on the status of the ReplicationController using this command:
+
+kubectl get replicationcontrollers
+
+
 
 $ kubectl describe replicationcontrollers/nginx
 
@@ -40,9 +44,9 @@ echo $pods
 
 
 
-kubectl scale deployments nginx  --replicas=4
+kubectl scale replicationcontrollers nginx  --replicas=4
 
-[root@master ~]# kubectl describe deployment nginx
+[root@master ~]# kubectl describe replicationcontrollers nginx
 Name:                   nginx
 Namespace:              default
 CreationTimestamp:      Mon, 22 Oct 2018 12:35:16 +0800
@@ -55,6 +59,10 @@ MinReadySeconds:        0
 RollingUpdateStrategy:  25% max unavailable, 25% max surge
 
 
+
+Delete 
+
+kubectl delete -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/replication/replication.yaml
 
 
 Demo 2 
@@ -80,14 +88,17 @@ spec:
       image: busybox
       command: ["sleep", "3600"]
 
-[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test.yaml
+[root@master1 test]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/replication/test.yaml
 pod "busybox-test" created
 
 [root@master ~]# kubectl get pod
 NAME           READY   STATUS    RESTARTS   AGE
 busybox-test   1/1     Running   0          9s
-[root@master ~]#
 
+
+[root@master ~]# kubectl delete pod busybox-test --grace-period=0 --force
+ 
+ 
 
 ---------------------------------------
 2. ReplicationController
@@ -108,13 +119,19 @@ spec:
       - name: nginx
         image: nginx
         command: ["sleep", "3600"]
+		
+		
 
-[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test2.yaml
+
+[root@master1 test]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/replication/test2.yaml
 replicationcontroller "busybox-test" created
 
 [root@master1 test]# kubectl get pod
 NAME                 READY     STATUS    RESTARTS   AGE
 busybox-test-vcpjd   1/1       Running   0          17s
+
+
+ 
 
 [root@master ~]# kubectl get rc
 NAME           DESIRED   CURRENT   READY   AGE
@@ -144,7 +161,7 @@ spec:
         command: ["sleep", "3600"]
 [root@master1 test]#
 
-[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test3.yaml
+[root@master1 test]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/replication/test3.yaml
 deployment "busybox-test" created
 
 [root@master1 test]# kubectl get pod

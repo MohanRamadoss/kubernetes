@@ -1,4 +1,4 @@
-
+Demo-1 
 #########################################
 # Scaling up and down in Kubernetes cluster
 
@@ -19,7 +19,7 @@ $ kubectl get services
 
 
 
-
+Demo-2 
 #####################################
 Create an Nginx deployment 
 #####################################
@@ -58,13 +58,19 @@ nginx-deployment-57664d6d66-m6b2h   1/1       Running   0          22m       10.
 nginx-deployment-57664d6d66-xxs56   1/1       Running   0          22m       10.36.0.2   master2
 
 
-
+Demo-3 
 
 Make nginx serve a docroot from the local fs
 
 Here the previous deployment and service will be removed. New ones will be deployed with a spec file. The nginx will also be configured to serve a local directory as docroot instead of the default /usr/share/nginx/html.
 
-On each worker machine, create a ```/tmp/var/sites/default```. On the master node, create a deployment spec called nginx-deployment.yml
+On each worker machine, create a ```/var/sites/default```. On the master node, create a deployment spec called nginx-deployment.yml
+
+mkdir -p /var/sites/default
+
+echo "node1 is okay " >  /var/sites/default/index.html 
+echo "node2 is okay " > /var/sites/default/index.html 
+echo "node3 is okay " > /var/sites/default/index.html 
 
 ---
 apiVersion: apps/v1
@@ -93,7 +99,7 @@ spec:
         - name: nginx-root
           hostPath:
             # directory location on host
-            path: /tmp/var/sites/default
+            path: /var/sites/default
             type: Directory
 ---
 apiVersion: v1
@@ -111,12 +117,23 @@ spec:
   selector:
     run: web
   type: LoadBalancer
+[root@master ~]#
+
+  
+  
 Delete the previous deployment and then deploy a new one with the yml file.
 
-[root@master~]# kubectl  delete deployment nginx
-[root@master~]# kubectl  delete service nginx-lb
-[root@master~]# kubectl  create -f nginx-deployment.yml
-On each worker mode, create an index.html under /var/sites/default and test it from the master node
+kubectl scale deployment nginx --replicas=4
+
+
+[root@master~]# kubectl  create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/scaling/scaling.yaml
+
+
+ kubectl scale deployment nginx-deployment --replicas=4
+
+ 
+ 
+On each worker mode, create an index.html under /tmp/var/sites/default and test it from the master node
 
 [root@master~]# curl http://192.168.1.70
 Hello this is node2

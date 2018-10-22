@@ -1,4 +1,3 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,7 +24,7 @@ spec:
         - name: nginx-root
           hostPath:
             # directory location on host
-            path: /var/sites/default
+            path: /tmp/var/sites/default
             type: Directory
 ---
 apiVersion: v1
