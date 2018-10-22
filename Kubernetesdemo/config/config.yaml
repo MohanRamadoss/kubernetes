@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-config
+data:
+  # key, value
+  test1: '11111'
+  test2: '22222'
