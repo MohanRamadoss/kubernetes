@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      run: web
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: web
+    spec:
+      containers:
+        - image: nginx
+          name: nginx-localroot
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: nginx-root
+      volumes:
+        - name: nginx-root
+          hostPath:
+            # directory location on host
+            path: /tmp/var/sites/default
+            type: Directory

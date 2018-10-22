@@ -1,5 +1,4 @@
 
-
 #########################################
 # Scaling up and down in Kubernetes cluster
 
@@ -16,6 +15,9 @@ $ kubectl get rs
 $ kubectl get pods
 
 $ kubectl get services
+#####################################################
+
+
 
 
 #####################################
@@ -23,57 +25,38 @@ Create an Nginx deployment
 #####################################
 Deploy image
 
-[root@k8s-ms ~]# docker pull nginx
-
-[root@k8s-ms ~]# kubectl run nginx --image=nginx
+[root@master~]# kubectl run nginx --image=nginx
 deployment.apps "nginx" created
 
-[root@k8s-ms ~]# kubectl get deployment
+[root@master~]# kubectl get deployment
 NAME      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 nginx     1         1         1            1           10s
-Go through the worker nodes and I found 1 instance of nginx running on k8s-wk2.
+Go through the worker nodes and I found 1 instance of nginx running on master2.
 
 Then create a service and expose port 80 on the master node's public ip
 
-[root@k8s-ms ~]#  kubectl expose deployment nginx --name=nginx-lb --external-ip=192.168.1.70 --port=80 --target-port=80 --type=LoadBalancer
+[root@master~]#  kubectl expose deployment nginx --name=nginx-lb --external-ip=192.168.1.70 --port=80 --target-port=80 --type=LoadBalancer
 service "nginx-lb" exposed
-[root@k8s-ms ~]# kubectl get service
+[root@master~]# kubectl get service
 NAME         TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
 kubernetes   ClusterIP      10.96.0.1       <none>        443/TCP        25m
 nginx-lb     LoadBalancer   10.103.218.95   192.168.1.70    80:32450/TCP   7s
 
 Scale out the deployment
 
-[root@k8s-ms ~]# kubectl scale deployment nginx --replicas=4
+[root@master~]# kubectl scale deployment nginx --replicas=4
 deployment.extensions "nginx" scaled
-[root@k8s-ms ~]# kubectl get deployment
+[root@master~]# kubectl get deployment
 NAME      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 nginx     4         4         4            4           2m
 
-[root@k8s-ms ~]# kubectl get pods -o wide
+[root@master~]# kubectl get pods -o wide
 NAME                                READY     STATUS    RESTARTS   AGE       IP          NODE
-nginx-deployment-57664d6d66-9vs2h   1/1       Running   1          22m       10.44.0.3   k8s-wk1
-nginx-deployment-57664d6d66-bznch   1/1       Running   1          22m       10.44.0.4   k8s-wk1
-nginx-deployment-57664d6d66-m6b2h   1/1       Running   0          22m       10.36.0.1   k8s-wk2
-nginx-deployment-57664d6d66-xxs56   1/1       Running   0          22m       10.36.0.2   k8s-wk2
+nginx-deployment-57664d6d66-9vs2h   1/1       Running   1          22m       10.44.0.3   master1
+nginx-deployment-57664d6d66-bznch   1/1       Running   1          22m       10.44.0.4   master1
+nginx-deployment-57664d6d66-m6b2h   1/1       Running   0          22m       10.36.0.1   master2
+nginx-deployment-57664d6d66-xxs56   1/1       Running   0          22m       10.36.0.2   master2
 
-
-See the above in action
-To quickly test the deployment, I go to my worker instances, locate the index.html file of the containers, and edit them. I've replaced the default landing page with text that can uniquely identify the containers.
- Then run a http GET on the load balancer IP and I see responses from different containers:
-
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk2-inst2
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk2-inst2
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk1-inst2
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk1-inst2
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk1-inst1
-[root@k8s-ms ~]# curl http://192.168.1.70
-wk2-inst2
 
 
 
@@ -81,7 +64,7 @@ Make nginx serve a docroot from the local fs
 
 Here the previous deployment and service will be removed. New ones will be deployed with a spec file. The nginx will also be configured to serve a local directory as docroot instead of the default /usr/share/nginx/html.
 
-On each worker machine, create a ```/var/sites/default```. On the master node, create a deployment spec called nginx-deployment.yml
+On each worker machine, create a ```/tmp/var/sites/default```. On the master node, create a deployment spec called nginx-deployment.yml
 
 ---
 apiVersion: apps/v1
@@ -110,7 +93,7 @@ spec:
         - name: nginx-root
           hostPath:
             # directory location on host
-            path: /var/sites/default
+            path: /tmp/var/sites/default
             type: Directory
 ---
 apiVersion: v1
@@ -130,16 +113,18 @@ spec:
   type: LoadBalancer
 Delete the previous deployment and then deploy a new one with the yml file.
 
-[root@k8s-ms ~]# kubectl  delete deployment nginx
-[root@k8s-ms ~]# kubectl  delete service nginx-lb
-[root@k8s-ms ~]# kubectl  create -f nginx-deployment.yml
+[root@master~]# kubectl  delete deployment nginx
+[root@master~]# kubectl  delete service nginx-lb
+[root@master~]# kubectl  create -f nginx-deployment.yml
 On each worker mode, create an index.html under /var/sites/default and test it from the master node
 
-[root@k8s-ms ~]# curl http://192.168.1.70
-Hello this is k8s-wk2
-[root@k8s-ms ~]# curl http://192.168.1.70
-Hello this is k8s-wk1
+[root@master~]# curl http://192.168.1.70
+Hello this is node2
+
+[root@master~]# curl http://192.168.1.70
+Hello this is node1
 Dump service in yaml
+
 This is one way to see how to write an yaml based on existing service.
 
 kubectl get svc nginx-lb -o yaml

@@ -1,150 +1,63 @@
-
-
-
 ###########Replication_Controller#################
 
-Create RC and check status by command:
 
+Demo -1 
 
-
-vi webtest_rc.yml
-
+root@node3 ~]# cat replication
 apiVersion: v1
 kind: ReplicationController
 metadata:
-  name: webtest
-  labels:
-    name: web
-    owner: Praparn_L
-    version: "1.0"
-    module: WebServer
-    environment: development
+  name: nginx
 spec:
   replicas: 3
+  selector:
+    app: nginx
   template:
     metadata:
+      name: nginx
       labels:
-        name: web
-        owner: Praparn_L
-        version: "1.0"
-        module: WebServer
-        environment: development
+        app: nginx
     spec:
       containers:
-        - name: webtest
-          image: labdocker/cluster:webservicelite
-          ports:
-          - containerPort: 5000
-            protocol: TCP
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
 
-Create Service and check status by command:
+kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/replication.yaml
 
+replicationcontroller/nginx created
 
-vi  webtest_svc.yml
-			
-apiVersion: v1
-kind: Service
-metadata:
-  name: webtest
-  labels:
-    name: web
-    owner: Praparn_L
-    version: "1.0"
-    module: WebServer
-    environment: development
-spec:
-  selector:
-    name: web
-    owner: Praparn_L
-    version: "1.0"
-    module: WebServer
-    environment: development
+Check on the status of the ReplicationController using this command:
 
-  type: NodePort
-  ports:
-   - port: 5000
-     name: http
-     targetPort: 5000
-     protocol: TCP
-     nodePort: 32500
+$ kubectl describe replicationcontrollers/nginx
 
 
-Create RC and check status by command:
+list all the pods that belong to the ReplicationController in a machine readable form, you can use a command like this:
 
-
-kubectl create -f webtest_rc.yml --validate=false	
-kubectl get rc
-kubectl get pods
-
-Create Service and check status by command:
-
-kubectl create -f webtest_svc.yml --validate=false	
-kubectl get svc
+$ pods=$(kubectl get pods --selector=app=nginx --output=jsonpath={.items..metadata.name})
+echo $pods
 
 
 
-Test curl and web browser for access web by command:
+kubectl scale deployments nginx  --replicas=4
 
-[root@master WorkShop_1.3_Replication_Controller]# kubectl get svc
-NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP          23h
-result       NodePort    10.98.148.213   <none>        80:31850/TCP     14m
-webtest      NodePort    10.101.4.185    <none>        5000:32500/TCP   7s
-
-
-
-[root@master WorkShop_1.3_Replication_Controller]# curl http://10.101.4.185:5000
-<H1> Welcome Page from Container Python Lab </H1>Checkpoint Date/Time: Mon Oct 15 15:50:11 2018
-[root@master WorkShop_1.3_Replication_Controller]#
-
-
-Delete some Pods by command:
-	kubectl get pods
-	---------------------------------------------------
-	Example: Get name of Pods
-	---------------------------------------------------
-	NAME            READY     STATUS    RESTARTS   AGE
-	webtest-9m8tx   1/1       Running   0          11m
-	webtest-9xgt3   1/1       Running   0          11m
-	webtest-cns49   1/1       Running   0          11m
-	---------------------------------------------------
-
-	kubectl delete pods webtest-9m8tx
-
-Check result again by command:
-	kubectl get pods
-	---------------------------------------------------
-	Example: Get Result
-	---------------------------------------------------
-	NAME            READY     STATUS    RESTARTS   AGE
-	webtest-9m8tx   1/1       Running   0          11m
-	webtest-9xgt3   1/1       Running   0          11m
-	webtest-cns49   1/1       Running   0          11m
----------------------------------------------------
+[root@master ~]# kubectl describe deployment nginx
+Name:                   nginx
+Namespace:              default
+CreationTimestamp:      Mon, 22 Oct 2018 12:35:16 +0800
+Labels:                 run=nginx
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               run=nginx
+Replicas:               4 desired | 4 updated | 4 total | 4 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
 
 
 
-Test curl and web browser for access web by command:
-		curl http://<ip of minikube>:32500
 
-		open browser for test can operate: http://<ip of minikube>:32500
-
- Test scale RC by command:
-	kubectl scale --replicas=10 rc/webtest
-	kubectl get rc webtest
-	kubectl get pods
-
- Test scale RC via file with command:
-	kubectl scale --replicas=5 -f webtest_rc.yml	(In case run via github: kubectl scale --replicas=5 -f https://raw.githubusercontent.com/praparn/kubernetesLab/master/WorkShop_1.3_Replication_Controller/webtest_rc.yml)
-	kubectl get rc webtest
-	kubectl get pods
-
-
- Check full detail of RC by command:
-	kubectl describe rc webtest
-
-
-
+Demo 2 
 
 
 Pod, Replication Controller (RC), yaml file of Deployment
@@ -167,7 +80,7 @@ spec:
       image: busybox
       command: ["sleep", "3600"]
 
-[root@master1 test]# kubectl create -f test.yaml
+[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test.yaml
 pod "busybox-test" created
 
 [root@master ~]# kubectl get pod
@@ -196,7 +109,7 @@ spec:
         image: nginx
         command: ["sleep", "3600"]
 
-[root@master1 test]# kubectl create -f test2.yaml
+[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test2.yaml
 replicationcontroller "busybox-test" created
 
 [root@master1 test]# kubectl get pod
@@ -231,7 +144,7 @@ spec:
         command: ["sleep", "3600"]
 [root@master1 test]#
 
-[root@master1 test]# kubectl create -f test3.yaml
+[root@master1 test]# kubectl create -f https://github.com/MohanRamadoss/kubernetes/blob/master/Kubernetesdemo/replication/test3.yaml
 deployment "busybox-test" created
 
 [root@master1 test]# kubectl get pod
