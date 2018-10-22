@@ -129,7 +129,7 @@ kubectl scale deployment nginx --replicas=4
 [root@master~]# kubectl  create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/scaling/scaling.yaml
 
 
- kubectl scale deployment nginx-deployment --replicas=4
+kubectl scale deployment nginx-deployment --replicas=4
 
  
  
