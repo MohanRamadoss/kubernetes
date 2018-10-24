@@ -272,16 +272,6 @@ vi /etc/exports
 
 /nfs     192.168.1.0/24(rw,no_root_squash)
 
-
-[root@dlp ~]# yum -y install nfs-utils
-[root@dlp ~]# vi /etc/idmapd.conf
-# line 5: uncomment and change to your domain name
-Domain = rmohan.com 
-
-vi /etc/exports
-# write settings for NFS exports
-
-/home 10.0.0.0/24(rw,no_root_squash)
 systemctl start rpcbind nfs-server
 systemctl enable rpcbind nfs-server
 
@@ -295,7 +285,7 @@ Domain = rmohan.com
  [root@node1 ~]# systemctl start rpcbind
 [root@node1 ~]# systemctl enable rpcbind
 mkdir /nfs
-mount -t nfs master.rmohan.com:/nfs /nfs 
+mount -t nfs nfs.rmohan.com:/nfs /nfs 
 
 
 # create PV definition
@@ -326,11 +316,11 @@ spec:
 [root@master ~]# kubectl create -f nfs-pv.yml
 persistentvolume "nfs-pv" created
 
-
 [root@master ~]# kubectl get pv
+[root@master ~]# kubectl get pvc
 
-NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS    CLAIM             STORAGECLASS   REASON    AGE
-nfs-pv    10Gi       RWX            Retain           Bound     default/nfs-pvc                            2d
+
+
 
 # create PVC definition
 
@@ -390,7 +380,7 @@ spec:
 pod "nginx-nfs" created
 # create a test file under the NFS shared directory
 
-[root@master ~]# echo 'NFS Persistent Storage Test' > /var/lib/nfs/share/index.html
+[root@master ~]# echo 'NFS Persistent Storage Test' > /nfs/pv1/index.html
 
 [root@master ~]# kubectl get pods -o wide
 NAME                     READY   STATUS      RESTARTS   AGE     IP          NODE               NOMINATED NODE

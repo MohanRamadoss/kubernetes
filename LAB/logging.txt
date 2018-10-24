@@ -1,0 +1,99 @@
+####################
+kubectl logs (Pod displays messages output to standard output)
+
+
+
+Start Pod.
+
+[root@master ~]# kubectl create deployment httpd --image=httpd
+deployment.apps/httpd created
+
+
+Check the state of Pod.
+[root@master ~]# kubectl get pod
+NAME                     READY   STATUS    RESTARTS   AGE
+httpd-5bf9cbc4cd-l2mv4   1/1     Running   0          13s
+nginx-x7vvt              1/1     Running   0          5m29s
+
+
+Check the status of Deployment.
+
+[root@master ~]# kubectl get deployment
+NAME    DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+httpd   1         1         1            1           47s
+
+
+Create a Service. Map host's port number 8888 to container port number 80.
+[root@master ~]# kubectl expose deployment httpd --port=8888 --target-port=80
+service/httpd exposed
+
+Create a Service. - port is the port number of the host, - target - port is the port number of Pod.
+[root@master ~]# kubectl expose deployment httpd --port=8888 --target-port=80
+service "httpd" exposed
+
+Check Service and endpoint information. You can see the relation of host side (10.254.92.77: 8888) <-> Pod (10.1.72.2: 80).
+[root@master ~]# kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+httpd        ClusterIP   10.101.100.86   <none>        8888/TCP   37s
+kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP    34h
+[root@master ~]# curl 10.101.100.86
+
+[root@master ~]# curl 10.101.100.86:8888
+<html><body><h1>It works!</h1></body></html>
+[root@master ~]# curl 10.101.100.86:8888
+<html><body><h1>It works!</h1></body></html>
+
+
+[root@master ~]# kubectl get endpoints
+NAME         ENDPOINTS            AGE
+httpd        10.1.72.2:80         15m
+
+
+Access Pod (httpd).
+[root@master ~]# curl http://10.110.105.91:8888
+<html><body><h1>It works!</h1></body></html>
+
+A log with HTTP access is output.
+[root@master ~]# kubectl logs httpd-2047761252-vrz7s
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.1.72.2. Set the 'ServerName' directive globally to suppress this message
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.1.72.2. Set the 'ServerName' directive globally to suppress this message
+[Sun Nov 06 12:06:42.420907 2016] [mpm_event:notice] [pid 1:tid 140692115355520] AH00489: Apache/2.4.23 (Unix) configured -- resuming normal operations
+[Sun Nov 06 12:06:42.446383 2016] [core:notice] [pid 1:tid 140692115355520] AH00094: Command line: 'httpd -D FOREGROUND'
+192.168.0.100 - - [06/Nov/2016:12:07:33 +0000] "GET / HTTP/1.1" 200 45
+
+HTTP access once again.
+[root@master ~]# curl http://10.254.92.77:8888
+<html><body><h1>It works!</h1></body></html>
+
+It is understood that the log of the second HTTP access is output.
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-l2mv4
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.42.0.1. Set the 'ServerName' directive globally to suppress this message
+AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 10.42.0.1. Set the 'ServerName' directive globally to suppress this message
+[Wed Oct 10 04:24:28.861087 2018] [mpm_event:notice] [pid 1:tid 140511875295104] AH00489: Apache/2.4.35 (Unix) configured -- resuming normal operations
+[Wed Oct 10 04:24:28.861280 2018] [core:notice] [pid 1:tid 140511875295104] AH00094: Command line: 'httpd -D FOREGROUND'
+10.32.0.1 - - [10/Oct/2018:04:29:32 +0000] "GET / HTTP/1.1" 200 45
+10.32.0.1 - - [10/Oct/2018:04:29:34 +0000] "GET / HTTP/1.1" 200 45
+
+
+
+
+Only log the last two lines. Add --tail=2 option.
+
+
+
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-hmms2 --tail=3
+[Sat Oct 20 11:31:07.217532 2018] [core:notice] [pid 1:tid 140383346812096] AH00094: Command line: 'httpd -D FOREGROUND'
+10.47.0.0 - - [20/Oct/2018:11:31:55 +0000] "GET / HTTP/1.1" 200 45
+10.47.0.0 - - [20/Oct/2018:11:31:56 +0000] "GET / HTTP/1.1" 200 45
+[root@master ~]# kubectl logs httpd-5bf9cbc4cd-hmms2 --tail=2
+10.47.0.0 - - [20/Oct/2018:11:31:55 +0000] "GET / HTTP/1.1" 200 45
+10.47.0.0 - - [20/Oct/2018:11:31:56 +0000] "GET / HTTP/1.1" 200 45
+[root@master ~]#
+
+
+Option usage example	meaning
+--tail=2	Output only the last two lines
+--since=10s	Output the log for the last 10 seconds
+--since=1m	Output the log of the last minute
+--since=2H	Output logs of the last 2 hours
+

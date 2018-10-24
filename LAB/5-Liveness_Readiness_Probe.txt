@@ -12,7 +12,7 @@ spec:
   - args:
     - /bin/sh
     - -c
-    - echo ok > /tmp/health; sleep 10; rm -rf /tmp/health; sleep 600
+    - echo ok > /tmp/health; sleep 10; rm -rf /tmp/health; sleep 200
     image: gcr.io/google_containers/busybox
     livenessProbe:
       exec:
@@ -49,8 +49,8 @@ spec:
 
 Utilise those file to check the output.
 
-$ kubectl create -f exec-liveness.yaml
-$ kubectl create -f http-liveness.yaml
+$ kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/Liveness/exec-liveness.yaml
+$ kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/Liveness/http-liveness.yaml
 
 ##Get the pod enlisting
 
