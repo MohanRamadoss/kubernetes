@@ -27,7 +27,7 @@ spec:
 
     Create the Pod:
 
-    kubectl create -f redis.yaml
+    kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/redis.yaml
 
     Verify that the Pod’s Container is running, and then watch for changes to the Pod:
 
@@ -150,7 +150,7 @@ spec:
 
 	  Create the PersistentVolumeClaim:
 
-kubectl create -f pv-claim.yaml
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/pv-claim.yaml
 
 
 [root@master ~]# kubectl get pv task-pv-volume
@@ -199,11 +199,13 @@ spec:
           name: task-pv-storage
 		  
 		  
-[root@master ~]# kubectl create -f pv-pod.yaml
+[root@master ~]# https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/pv-pod.yaml
 pod/task-pv-pod created
 [root@master ~]# kubectl get pod task-pv-pod
 NAME          READY   STATUS    RESTARTS   AGE
 task-pv-pod   1/1     Running   0          8s
+
+
 [root@master ~]# kubectl exec -it task-pv-pod -- /bin/bash
 root@task-pv-pod:/# apt-get update
 Get:2 http://security.debian.org/debian-security stretch/updates InRelease [94.3 kB]
@@ -216,14 +218,21 @@ Get:7 http://cdn-fastly.deb.debian.org/debian stretch/main amd64 Packages [7099 
 Get:8 http://security.debian.org/debian-security stretch/updates/main amd64 Packages [452 kB]
 Fetched 7862 kB in 3s (2061 kB/s)
 Reading package lists... Done
+
 root@task-pv-pod:/# apt-get install curl
+
 root@task-pv-pod:/# curl localhost
- root@task-pv-pod:/# curl localhost
+
+root@task-pv-pod:/# curl localhost
 Hello from Kubernetes storage node1
+
 root@task-pv-pod:/#
 
 
 
+
+
+##########################################################################
 
 
 
@@ -289,7 +298,7 @@ spec:
     server: 192.168.1.70
     readOnly: false
 
-[root@master ~]# kubectl create -f nfs-pv.yml
+[root@master ~]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/nfs-pv.yml
 persistentvolume "nfs-pv" created
 
 [root@master ~]# kubectl get pv
@@ -316,7 +325,7 @@ spec:
        # storage size to use
        storage: 1Gi
 
-[root@master ~]# kubectl create -f nfs-pvc.yml
+[root@master ~]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/nfs-pvc.yml
 
 persistentvolumeclaim "nfs-pvc" created
 [root@master ~]# kubectl get pvc
@@ -351,7 +360,7 @@ spec:
         # PVC name you created
         claimName: nfs-pvc
 
-[root@master ~]# kubectl create -f nginx-nfs.yml
+[root@master ~]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/volume/nginx-nfs.yml
 
 pod "nginx-nfs" created
 # create a test file under the NFS shared directory
@@ -375,10 +384,6 @@ nginx-nfs                1/1     Running     0          3m53s   10.42.0.1   node
 NFS Persistent Storage Test 
 
 #############################Volume ########################################################
-
-
-
-
 
 Make nginx serve a docroot from the local fs
 
@@ -446,7 +451,3 @@ Dump service in yaml
 This is one way to see how to write an yaml based on existing service.
 
 kubectl get svc nginx-lb -o yaml
-
-
-
-

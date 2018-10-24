@@ -1,4 +1,25 @@
-Deploying WordPress and MySQL with Persistent Volumes
+
+Deploying WordPress and MySQL with Persistent Volumes -Lab1 
+
+1) lets create pv 
+
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/statefull/pv.yaml
+
+2) pvc 
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/statefull/pvc.yaml
+
+
+3) deploy the WordPress and MySQL
+
+
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/statefull/mysql-deployment.yaml
+
+
+
+
+Deploying WordPress and MySQL with Persistent Volumes  using storeage configured
+
+
 
 Create a Secret for MySQL Password
 

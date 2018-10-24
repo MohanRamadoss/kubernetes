@@ -1,8 +1,3 @@
-https://github.com/cloudavail/snippets/tree/df9e9b3f63ab077e33245183e1fe84901898177a/kubernetes/kubernetes_cronjob
-
-
-https://linuxhint.com/kubernetes-jobs-and-cron-jobs/
-
 
 cronjob.yaml
 
@@ -30,7 +25,7 @@ kubectl run hello --schedule="*/1 * * * *" --restart=OnFailure --image=busybox -
 	
 Create Cronjob
 
-kubectl apply -f cronjob.yaml
+kubectl apply -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/cronjob/cronjob.yaml
 
 
 
@@ -84,7 +79,7 @@ spec:
       restartPolicy: Never
 
 
-[root@master ~]# kubectl create -f batchjob.yaml
+[root@master ~]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/cronjob/batchjob.yaml
 job.batch/pi created
 
 

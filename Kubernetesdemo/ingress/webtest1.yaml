@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webtest1
+  labels:
+    name: webtest1
+    owner: Mohan
+    version: "1.0"
+    module: WebServer
+    environment: uat
+spec:
+  type: LoadBalancer
+  externalIPs:
+    - 192.168.1.70
+  selector:
+    name: webtest1
+    owner: Mohan
+    version: "1.0"
+    module: WebServer
+    environment: uat
+ 
+  ports:
+   - port: 80
+     name: http
+     targetPort: 5000
+     protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webtest1
+  labels:
+    name: webtest1
+    owner: Mohan
+    version: "1.0"
+    module: WebServer
+    environment: uat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: webtest1
+      owner: Mohan
+      version: "1.0"
+      module: WebServer
+      environment: uat
+  template:
+    metadata:
+      labels:
+        name: webtest1
+        owner: Mohan
+        version: "1.0"
+        module: WebServer
+        environment: uat
+    spec:
+      containers:
+        - name: webtest1
+          image: labdocker/cluster:webservicelite_v1
+          ports:
+          - containerPort: 5000
+            protocol: TCP

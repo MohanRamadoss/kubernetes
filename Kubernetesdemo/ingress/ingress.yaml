@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingresswebtest
+spec:
+  rules:
+  - host: uat.rmohan.com
+    http:
+      paths:
+      - backend:
+          serviceName: webtest1
+          servicePort: 80
+  - host: prod.rmohan.com
+    http:
+      paths:
+      - backend:
+          serviceName: webtest2
+          servicePort: 80
