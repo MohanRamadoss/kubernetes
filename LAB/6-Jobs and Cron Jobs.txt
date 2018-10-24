@@ -43,7 +43,11 @@ hello   */1 * * * *   False     0        <none>          60s
 [root@master ~]#  kubectl get jobs --watch
 NAME               COMPLETIONS   DURATION   AGE
 hello-1540039440   0/1           44s        44s
-[root@master ~]#
+[root@master ~]#kubectl get pods 
+
+kubectl logs hello-1540039440 
+
+
 
 
 

@@ -2,7 +2,9 @@
 
 That’s great for a simple static web server, but what about persistent storage?
 
-The container file system only lives as long as the container does. So if your app’s state needs to survive relocation, reboots, and crashes, you’ll need to configure some persistent storage.
+The container file system only lives as long as the container does. 
+
+So if your app’s state needs to survive relocation, reboots, and crashes, you’ll need to configure some persistent storage.
 
 In this example you can create a Redis Pod with a named volume, and a volume mount that defines the path to mount the Volume.
 
@@ -94,32 +96,6 @@ At this point, the Container has terminated and restarted. This is because the R
 
 
 ###############PersistentVolume for Storage############################
-
-
-
-Kubernetes Volumes vs Persistent Volumes
-There are currently two types of storage abstracts available with Kubernetes: Volumes and Persistent Volumes. A Kubernetes volume exists only while the containing pod exists. 
-Once the pod is deleted, the associated volume is also deleted. As a result, Kubernetes volumes are useful for storing temporary data that does not need to exist outside of the pod’s lifecycle.
-Kubernetes persistent volumes remain available outside of the pod lifecycle – this means that the volume will remain even after the pod is deleted. It is available to claim by another pod if required, and the data is retained. 
-So how does the usage of Kubernetes volumes differ from Kubernetes persistent volumes? The answer is quite simple : Kubernetes persistent volumes are used in situations where the data needs to be retained regardless of the pod lifecycle.
-Kubernetes volumes are used for storing temporary data.
-
-Why do we use persistent volumes?
-In the earlier days of containerization there were some pretty strict rules / best practices put in place. 
-First and foremost was that containers should be stateless. 
-As Kubernetes has matured and container native storage solutions (such as Portworx) have been created, there is no real reason to draw the line at stateless applications.
- You may want to gain the benefits of having your application in a container (fast startup, high availability, self healing etc) but also store, retain and back up data created or used by that application. 
- 
-Persistent Volumes: A use case
-The most common use case for Persistent volumes in Kubernetes is for databases. 
-Obviously a database needs to have access to its data at all times, and by leveraging PVs, we can start using databases like MySQL, Cassandra, CockroachDB and even MS SQL for our applications. 
-By ensuring the consistent state of our data, we can start putting complex workloads into containers, and not just stateless, 12-factor style web applications. 
-By utilizing persistent volumes, we can simplify the deployment of distributed, stateful applications (such as Cassandra DB). When deploying Cassandra, we ensure that the following happens:
-Each pod is created (with appropriate config and environment variables required)
-A persistent volume is attached to the pod (via a persistent volume claim)
-The claimed storage is mounted inside the pod as required. 
-
-
 
 
 [root@master ~]# mkdir /mnt/data

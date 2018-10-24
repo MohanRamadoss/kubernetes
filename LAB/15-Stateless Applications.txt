@@ -6,6 +6,7 @@ The guestbook application uses Redis to store its data. It writes its data to a 
 Creating the Redis Master Deployment
 
 The manifest file, included below, specifies a Deployment controller that runs a single replica Redis master Pod.
+
 redis-master-deployment.yaml
 
 apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
