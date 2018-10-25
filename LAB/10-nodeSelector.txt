@@ -21,7 +21,7 @@ spec:
     webserver: apache
 EOF
 
-kubectl create -f nodeselector.yaml
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/nodeselector/nodeselector.yaml
 kubectl get pods -o wide
 
 
@@ -48,7 +48,7 @@ spec:
     disktype: ssd
 EOF
 
-kubectl create -f nodessd.yaml
+kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/nodeselector/nodessd.yaml
 kubectl get pods -o wide
 
 
@@ -90,7 +90,7 @@ spec:
 
 
 Start Pod.
-[root@master1 ~]# kubectl create -f centos.yaml
+[root@master1 ~]# kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/master/Kubernetesdemo/nodeselector/centos.yaml
 pod "centos" created
 
 Check the state of Pod. You can see that it is running on node2. 
