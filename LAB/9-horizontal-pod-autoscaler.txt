@@ -1,68 +1,77 @@
 
-kubectl get deploy,pods -n kube-system --selector='k8s-app=metrics-server'
+Ensure High Availability and Uptime With Kubernetes Horizontal Pod Autoscaler and Prometheus
 
-git clone  https://github.com/kubernetes-incubator/metrics-server.git
-kubectl apply -f kubectl create -f metrics-server/deploy/1.8+/
+If in the first version of HPA you would need Heapster to provide CPU and memory metrics, 
+in HPA v2 and Kubernetes 1.8 only the metrics server is required with the horizontal-pod-autoscaler-use-rest-clients switched on. 
+The HPA rest client is enabled by default in Kubernetes 1.9. GKE 1.9 comes with the Metrics Server pre-installed. 
 
-kubectl get deploy,pods -n kube-system --selector='k8s-app=metrics-server'
+Deploy the Metrics Server in the kube-system namespace: 
 
 
-First, we will start a deployment running the image and expose it as a service:
+kubectl create -f ./metrics-server
 
-$ kubectl run php-apache --image=k8s.gcr.io/hpa-example --requests=cpu=200m --expose --port=80
-service/php-apache created
-deployment.apps/php-apache created
 
-Create Horizontal Pod Autoscaler
 
-Now that the server is running, we will create the autoscaler using kubectl autoscale. The following command will create a Horizontal Pod Autoscaler that maintains between 1 and 10 replicas of the Pods controlled by the php-apache deployment we created in the first step of these instructions. Roughly speaking, HPA will increase and decrease the number of replicas (via the deployment) to maintain an average CPU utilization across all Pods of 50% (since each pod requests 200 milli-cores by kubectl run, this means average CPU usage of 100 milli-cores). See here for more details on the algorithm.
+After one minute the metric-server starts reporting CPU and memory usage for nodes and pods. 
+View nodes metrics: 
+kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes" 
 
-$ kubectl autoscale deployment php-apache --cpu-percent=50 --min=1 --max=10
-horizontalpodautoscaler.autoscaling/php-apache autoscaled
+View pods metrics: 
+kubectl get --raw "/apis/metrics.k8s.io/v1beta1/pods" 
 
-We may check the current status of autoscaler by running:
 
-$ kubectl get hpa
-NAME         REFERENCE                     TARGET    MINPODS   MAXPODS   REPLICAS   AGE
-php-apache   Deployment/php-apache/scale   0% / 50%  1         10        1          18s
 
-Please note that the current CPU consumption is 0% as we are not sending any requests to the server (the CURRENT column shows the average across all the pods controlled by the corresponding deployment).
-Increase load
+2. Auto Scaling based on CPU and memory usage
 
-Now, we will see how the autoscaler reacts to increased load. We will start a container, and send an infinite loop of queries to the php-apache service (please run it in a different terminal):
+You will use a small Golang-based web app to test the Horizontal Pod Autoscaler (HPA). 
 
-$ kubectl run -i --tty load-generator --image=busybox /bin/sh
+Deploy podinfo to the default namespace: 
 
-Hit enter for command prompt
+kubectl create -f ./podinfo/podinfo-svc.yaml,./podinfo/podinfo-dep.yaml
 
-$ while true; do wget -q -O- http://php-apache.default.svc.cluster.local; done
 
-Within a minute or so, we should see the higher CPU load by executing:
+ curl -s "http://10.111.177.150:9898/?[1-1000000]"
+ 
+ 
+ 
+Access podinfo with the NodePort service at http://<K8S_PUBLIC_IP>:31198. 
+Next define a HPA that maintains a minimum of two replicas and scales up to ten if the CPU average is over 80% or if the memory goes over 200Mi: 
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: podinfo
+spec:
+  scaleTargetRef:
+    apiVersion: extensions/v1beta1
+    kind: Deployment
+    name: podinfo
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageValue: 200Mi
+	  
+	  
 
-$ kubectl get hpa
-NAME         REFERENCE                     TARGET      CURRENT   MINPODS   MAXPODS   REPLICAS   AGE
-php-apache   Deployment/php-apache/scale   305% / 50%  305%      1         10        1          3m
 
-Here, CPU consumption has increased to 305% of the request. As a result, the deployment was resized to 7 replicas:
+Create the HPA: 
+edit the hpa values 
+kubectl create -f ./podinfo/podinfo-hpa.yaml
+After a couple of seconds the HPA controller contacts the metrics server and then fetches the CPU and memory usage: 
+kubectl get hpa
+NAME      REFERENCE            TARGETS                      MINPODS   MAXPODS   REPLICAS   AGE
+podinfo   Deployment/podinfo   2826240 / 200Mi, 15% / 80%   2         10        2          5m
 
-$ kubectl get deployment php-apache
-NAME         DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-php-apache   7         7         7            7           19m
 
-Note Sometimes it may take a few minutes to stabilize the number of replicas. Since the amount of load is not controlled in any way it may happen that the final number of replicas will differ from this example.
-Stop load
-
-We will finish our example by stopping the user load.
-
-In the terminal where we created the container with busybox image, terminate the load generation by typing <Ctrl> + C.
-
-Then we will verify the result state (after a minute or so):
-
-$ kubectl get hpa
-NAME         REFERENCE                     TARGET       MINPODS   MAXPODS   REPLICAS   AGE
-php-apache   Deployment/php-apache/scale   0% / 50%     1         10        1          11m
-
-$ kubectl get deployment php-apache
-NAME         DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-php-apache   1         1         1            1           27m
-php-apache   1         1         1            1           27m
+In order to increase the CPU usage, run a load test 	  
+	 
+curl -s "http://10.96.206.201:9898/?[1-1000000]"
+ 	 
+	 
+	  

@@ -17,6 +17,12 @@ kubectl create -f https://raw.githubusercontent.com/MohanRamadoss/kubernetes/mas
 
 
 
+
+
+
+
+
+
 Deploying WordPress and MySQL with Persistent Volumes  using storeage configured
 
 

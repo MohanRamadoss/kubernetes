@@ -16,13 +16,24 @@ NAME          STATUS    AGE
 default       Active    61d
 prod         Active    2m
 dev         Active    2m
-
 Start Pod with prod and dev respectively.
 [root@master ~]# kubectl run nginx --image=nginx --namespace=prod
 deployment "nginx" created
 
 [root@master ~]# kubectl run nginx --image=nginx --namespace=dev
 deployment "nginx" created
+
+[root@master ~]# kubectl describe namespace default
+Name:         default
+Labels:       <none>
+Annotations:  <none>
+Status:       Active
+
+No resource quota.
+
+No resource limits.
+[root@master ~]#
+
 
 Check the state of Pod. It is understood that Pod is operating with name 1, name 2 respectively.
 [root@master ~]# kubectl get pod --all-namespaces

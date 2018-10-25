@@ -1,0 +1,69 @@
+
+###########
+kubectl drain (Pod is prohibited) / kubectl uncordon (Pod is prohibited)
+  
+ 
+kubectl drain (Pod is prohibited) / kubectl uncordon (Pod is prohibited)
+Activate two Pods.
+[root@master ~]# kubectl run nginx --image=nginx --replicas=2
+deployment "nginx" created
+
+Check the state of Pod. Pods are moving one by one on the master (master) and the node (node ​​1).
+[root@master ~]# kubectl get pod -o wide
+NAME                     READY     STATUS    RESTARTS   AGE       NODE
+nginx-2040093540-2oix4   1/1       Running   0          20s       node1
+nginx-2040093540-pkmvj   1/1       Running   0          20s       master
+
+Disable Pod deployment of node1.rmohan.com (node1.rmohan.com).
+[root@master secrets]# kubectl drain node1.rmohan.com
+node/node1.rmohan.com cordoned
+error: unable to drain node "node1.rmohan.com", aborting command...
+
+There are pending nodes to be drained:
+ node1.rmohan.com
+error: DaemonSet-managed pods (use --ignore-daemonsets to ignore): kube-proxy-xbknk, weave-net-b89dl
+
+
+ kubectl scale  deployments nginx --replicas=15
+
+
+Perform Pod deployment prohibition.
+If the pod managed by Deployment is running on the host designated for prohibition of deployment, you need to specify the - force option.
+[root@master secrets]# kubectl drain --force node1.rmohan.com --ignore-daemonsets
+node/node1.rmohan.com already cordoned
+WARNING: Ignoring DaemonSet-managed pods: kube-proxy-xbknk, weave-net-b89dl
+pod/coredns-576cbf47c7-2k5cx evicted
+pod/coredns-576cbf47c7-9ngf4 evicted
+pod/nginx-dbddb74b8-gvjqm evicted
+
+
+
+Check the status of the host. The master knows that Pod deployment is prohibited.
+[root@master secrets]# kubectl get node
+NAME                STATUS                     ROLES    AGE   VERSION
+master.rmohan.com   Ready                      master   25h   v1.12.1
+node1.rmohan.com    Ready,SchedulingDisabled   <none>   25h   v1.12.1
+node2.rmohan.com    Ready                      <none>   25h   v1.12.1
+node3.rmohan.com    Ready                      <none>   25h   v1.12.1
+[root@master secrets]#
+
+Check the state of Pod.
+You can see that the Pod that was running on the master (master) moves to the node (node ​​1) and both are moving at the node (node ​​1).
+root@master secrets]# kubectl get pod -o wide
+NAME                    READY   STATUS    RESTARTS   AGE     IP          NODE               NOMINATED NODE
+multiple-container      2/2     Running   0          44m     10.36.0.2   node3.rmohan.com   <none>
+nginx-dbddb74b8-mfr8m   1/1     Running   0          47s     10.36.0.3   node3.rmohan.com   <none>
+nginx-dbddb74b8-z5l24   1/1     Running   0          2m22s   10.44.0.3   node2.rmohan.com   <none>
+secretstest             1/1     Running   0          69m     10.36.0.1   node3.rmohan.com   <none>
+test-pod                1/1     Running   0          59m     10.44.0.2   node2.rmohan.com   <none>
+
+Release Pod deployment prohibition.
+[root@master secrets]# kubectl uncordon node1.rmohan.com
+node/node1.rmohan.com uncordoned
+
+Check the status of the host. You can see that Pod deployment prohibition was canceled.
+[root@master ~]# kubectl get node
+NAME        STATUS     AGE
+master      Ready      59d
+node1       Ready      61d
+  
