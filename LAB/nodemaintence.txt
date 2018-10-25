@@ -29,7 +29,7 @@ error: DaemonSet-managed pods (use --ignore-daemonsets to ignore): kube-proxy-xb
 
 Perform Pod deployment prohibition.
 If the pod managed by Deployment is running on the host designated for prohibition of deployment, you need to specify the - force option.
-[root@master secrets]# kubectl drain --force node1.rmohan.com --ignore-daemonsets
+[root@master secrets]# kubectl drain --force node2.rmohan.com --ignore-daemonsets
 node/node1.rmohan.com already cordoned
 WARNING: Ignoring DaemonSet-managed pods: kube-proxy-xbknk, weave-net-b89dl
 pod/coredns-576cbf47c7-2k5cx evicted

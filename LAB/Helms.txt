@@ -1,17 +1,6 @@
 ﻿============================================================================================================
 Helm Package Manager
 
-https://www.digitalocean.com/community/tutorials/how-to-install-software-on-kubernetes-clusters-with-the-helm-package-manager
-
-https://linuxhint.com/getting-started-kubernetes-helm-charts/
-
-https://github.com/ContainerSolutions/adidas/blob/1544187f0ef67f9199bff4345186f6276230abd1/helm-essentials/03_lab.md
-
-
-https://github.com/d-james-projects/helm/blob/cb1ffad725cbb8d5f33ad43320d3602b8d436a7a/backup-prometheus/helm_notes.txt
-
-######################################################
-
 Step 1 — Installing Helm
 
 First we'll install the helm command-line utility on our local machine. Helm provides a script that handles the installation process on MacOS, Windows, or Linux.
@@ -106,3 +95,81 @@ delete
 
 helm delete my-release
 release "my-release" deleted
+
+
+
+
+
+
+
+
+
+
+
+helm search
+helm repo update
+helm install stable/mysql
+
+
+helm repo update
+helm install stable/mysql
+NAME:   braided-quail
+
+kubectl port-forward svc/braided-quail-mysql 3306 &
+
+$ MYSQL_ROOT_PASSWORD=$(kubectl get secret --namespace default braided-quail-mysql -o jsonpath="{.data.mysql-root-password}" | base64 --decode; echo)
+
+$ mysql -h 127.0.0.1 -P 3306 -u root -p${MYSQL_ROOT_PASSWORD}
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Handling connection for 3306
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+...
+
+
+helm status braided-quail
+
+
+helm inspect stable/mysql
+
+
+helm ls
+
+$ helm install stable/mysql
+$ helm ls --all
+
+helm delete braided-quail
+
+helm delete --purge customized
+
+
+helm init
+helm repo list
+
+helm repo update
+helm serve
+
+helm search
+
+helm search redis
+
+
+helm install stable/redis
+helm install helloworld
+helm install helloworld-0.1.0.tgz
+
+helm upgrate
+
+helm delete
+
+helm inspect values
+
+helm history
+
+
+helm rollback
+
+
+
+
+
+
